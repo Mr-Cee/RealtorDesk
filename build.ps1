@@ -2,6 +2,8 @@ param([switch]$Installer, [switch]$Test)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 New-Item -ItemType Directory -Force build/lib,build/classes,dist | Out-Null
+& java tools/CreateAppIcon.java build/branding
+if ($LASTEXITCODE -ne 0) { throw 'App icon generation failed' }
 $appVersion = (Get-Content VERSION -Raw).Trim()
 if ($appVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Invalid VERSION' }
 Set-Content -LiteralPath build/BuildInfo.java -Encoding utf8 -Value "final class BuildInfo { static final String VERSION = `"$appVersion`"; }"
@@ -26,7 +28,7 @@ foreach ($name in $deps.Keys) {
 $sources = @(Get-ChildItem src -Filter '*.java' -File | ForEach-Object FullName)
 & javac -encoding UTF-8 --release 21 -cp 'build/lib/*' -d build/classes build/BuildInfo.java @sources
 if ($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
-& jar --create --file build/lib/RealtorApp.jar --main-class RealtorApp -C build/classes .
+& jar --create --file build/lib/RealtorApp.jar --main-class RealtorApp -C build/classes . -C build/branding app-icon.png
 if ($LASTEXITCODE -ne 0) { throw 'JAR creation failed' }
 if ($Test) {
  New-Item -ItemType Directory -Force build/testclasses | Out-Null
@@ -48,7 +50,33 @@ if ($Installer) {
   & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED -cp 'build/lib/*;build/classes;build/testclasses' UpdaterTest
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime checks failed' }
  }
- & $wixCommand build installer/RealtorDesk.wxs installer/InstallUI.wxs -arch x64 -d "AppVersion=$appVersion" -d "RuntimeSource=$runtimePath" -d "AppSource=$PSScriptRoot\build\lib" -o "dist/RealtorDesk-$appVersion.msi"
+ $nativeOutput = Join-Path $PSScriptRoot ("build/native-" + [Guid]::NewGuid().ToString('N'))
+ & jpackage --type app-image --name RealtorDesk --app-version $appVersion --vendor RealtorDesk --description 'Client, property and paperwork organizer for individual realtors' --input build/lib --main-jar RealtorApp.jar --main-class RealtorApp --runtime-image $runtimePath --icon build/branding/RealtorDesk.ico --dest $nativeOutput --java-options '--enable-native-access=ALL-UNNAMED'
+ if ($LASTEXITCODE -ne 0) { throw 'Native RealtorDesk.exe launcher creation failed' }
+ $imagePath = Join-Path $nativeOutput 'RealtorDesk'
+ if ($Test) {
+  $configPath = Join-Path $imagePath 'app/RealtorDesk.cfg'
+  $originalConfig = [IO.File]::ReadAllText($configPath)
+  $probeJar = Join-Path $imagePath 'app/LauncherProbe.jar'
+  $reportPath = Join-Path $nativeOutput 'launcher-check.txt'
+  try {
+   & jar --create --file $probeJar -C build/testclasses LauncherProbe.class
+   if ($LASTEXITCODE -ne 0) { throw 'Launcher probe packaging failed' }
+   $probeConfig = $originalConfig.Replace('app.mainclass=RealtorApp','app.mainclass=LauncherProbe')
+   $probeConfig = $probeConfig.Replace('app.classpath=', 'app.classpath=$APPDIR\LauncherProbe.jar;')
+   [IO.File]::WriteAllText($configPath, $probeConfig, [Text.UTF8Encoding]::new($false))
+   $probeProcess = Start-Process -FilePath (Join-Path $imagePath 'RealtorDesk.exe') -ArgumentList ('"' + $reportPath + '"') -WindowStyle Hidden -PassThru
+   if (!$probeProcess.WaitForExit(30000)) { $probeProcess.Kill(); throw 'Native launcher probe timed out' }
+   if ($probeProcess.ExitCode -ne 0 -or !(Test-Path $reportPath)) { throw 'Native launcher probe failed' }
+   $report = Get-Content $reportPath -Raw
+   if (!$report.Contains("version $appVersion")) { throw 'Native launcher version mismatch' }
+   Write-Output $report
+  } finally {
+   [IO.File]::WriteAllText($configPath, $originalConfig, [Text.UTF8Encoding]::new($false))
+   Remove-Item -LiteralPath $probeJar -ErrorAction SilentlyContinue
+  }
+ }
+ & $wixCommand build installer/RealtorDesk.wxs installer/InstallUI.wxs -arch x64 -d "AppVersion=$appVersion" -d "RuntimeSource=$imagePath\runtime" -d "AppSource=$imagePath\app" -d "LauncherSource=$imagePath" -d "IconSource=$PSScriptRoot\build\branding\RealtorDesk.ico" -o "dist/RealtorDesk-$appVersion.msi"
  if ($LASTEXITCODE -ne 0) { throw 'Windows MSI installer creation failed' }
  $installerName = "RealtorDesk-$appVersion.msi"
  $hash = (Get-FileHash -LiteralPath "dist/$installerName" -Algorithm SHA256).Hash.ToLowerInvariant()
