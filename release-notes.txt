@@ -1,16 +1,14 @@
-RealtorDesk 0.1.16
+RealtorDesk 0.1.17
 
 What's new
 
-- Delete mistaken property records from the Properties tab. Confirmation names the property and warns if a client is attached. The client itself is kept.
+- Hidden the internal ID column on the Properties tab.
+- Removed Notes from the Properties table. Existing notes remain saved and editable in the property window.
+- Added a Closed Price column, displayed as dollars and cents and sorted numerically.
+- Enter or update the closed price in the property editor, including when editing linked properties from a client.
+- Leave the price blank until recorded, or clear it if needed. Existing property prices start blank.
 
-- Property addresses now have separate Street number, Direction, Street name, Street type, Unit/Apt, City, State and ZIP fields.
-- Street number, Street name, City, State and ZIP are required when creating or editing a property. Direction, Street type and Unit/Apt are optional.
-- Possible duplicate clients are flagged by matching name, email or phone, including common phone formatting differences.
-- Possible duplicate properties are flagged by address, including common direction/street-type abbreviations. Units distinguish apartments and condos.
-- Review matching records before choosing whether to save anyway. Existing records are not automatically merged or removed.
-- Existing full addresses are preserved. The editor prefills recognizable address parts and shows the original address for review; fill missing required details before saving an edited property.
-- Linked property details remain synchronized between Clients and Properties. Key Dates are preserved.
+Client links, property addresses, notes and Key Dates are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

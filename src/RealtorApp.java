@@ -57,7 +57,7 @@ public class RealtorApp {
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
-        tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Notes"}, "SELECT p.id,c.name,p.address,p.status,p.notes FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
+        tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
         var documents=new DocumentsPanel(db,HOME.resolve("documents"));
         tabs.add("Documents",documents);
@@ -120,7 +120,7 @@ public class RealtorApp {
     }
     JPanel records(String type, String[] columns, String sql, Runnable add) {
         var panel = new JPanel(new BorderLayout(8,8));
-        var model = new DefaultTableModel(columns,0) { public boolean isCellEditable(int r,int c) { return false; } };
+        var model = new DefaultTableModel(columns,0) { public Class<?> getColumnClass(int c){return type.equals("properties")&&c==4?Long.class:Object.class;} public boolean isCellEditable(int r,int c) { return false; } };
         var table = new JTable(model); table.setAutoCreateRowSorter(true); table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); table.setRowHeight(28);table.setFillsViewportHeight(true);
         Runnable refresh = () -> safe(() -> { model.setRowCount(0); try(var s=db.createStatement();var rs=s.executeQuery(sql)) { while(rs.next()) { Object[] row=new Object[columns.length]; for(int i=0;i<row.length;i++) row[i]=rs.getObject(i+1); model.addRow(row); } } });
         recordRefreshers.add(refresh);
@@ -138,6 +138,7 @@ public class RealtorApp {
             ClientSearch.attach(table,search,count);
         }
         if(type.equals("properties")) {
+            PropertyPrice.configureTable(table);
             Runnable editSelected=ClientTableActions.install(table,this::editProperty,this::refreshRecords);
             var edit=new JButton("Edit selected");edit.addActionListener(e->editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click to edit a property or change its client.");
@@ -200,7 +201,7 @@ public class RealtorApp {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name,phone,email FROM clients ORDER BY name,id")){while(r.next())choices.add(new Choice(r.getLong(1),r.getString(2)+" | "+r.getString(3)+" | "+r.getString(4)+" (#"+r.getLong(1)+")"));}
         Choice initial=choices.get(0);if(original!=null&&original.clientId()!=null)for(var c:choices)if(c.id()==original.clientId())initial=c;
         var owner=(Choice)JOptionPane.showInputDialog(frame,"Linked client (optional)","Property client",JOptionPane.QUESTION_MESSAGE,null,choices.toArray(),initial);if(owner==null)return;
-        PropertyStore.save(db,new PropertyStore.Property(property.id(),owner.id()==0?null:owner.id(),property.address(),property.status(),property.notes(),property.parts()));refreshRecords();
+        PropertyStore.save(db,new PropertyStore.Property(property.id(),owner.id()==0?null:owner.id(),property.address(),property.status(),property.notes(),property.parts(),property.closedPriceCents()));refreshRecords();
     });}
     void addCall() { safe(() -> { var c=chooseClient();if(c==null)return;var v=form("Log call","Follow-up date (YYYY-MM-DD, optional)","Call notes");if(v==null)return;if(!v[0].isBlank())LocalDate.parse(v[0]);execute("INSERT INTO calls(client_id,called,followup,notes) VALUES(?,?,?,?)",c.id,LocalDateTime.now().toString(),v[0],v[1]); }); }
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }
