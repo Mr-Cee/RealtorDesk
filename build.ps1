@@ -2,6 +2,7 @@ param([switch]$Installer)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 New-Item -ItemType Directory -Force build/lib,build/classes,dist | Out-Null
+Get-ChildItem build/classes -Filter '*.class' -File | Remove-Item
 $deps = @{
  'sqlite-jdbc-3.51.3.0.jar' = 'https://repo.maven.apache.org/maven2/org/xerial/sqlite-jdbc/3.51.3.0/sqlite-jdbc-3.51.3.0.jar'
  'gson-2.13.2.jar' = 'https://repo.maven.apache.org/maven2/com/google/code/gson/gson/2.13.2/gson-2.13.2.jar'
@@ -24,6 +25,12 @@ if ($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
 & jar --create --file build/lib/RealtorApp.jar --main-class RealtorApp -C build/classes .
 if ($LASTEXITCODE -ne 0) { throw 'JAR creation failed' }
 if ($Installer) {
- & jpackage --type exe --name RealtorDesk --app-version 0.1.0 --input build/lib --main-jar RealtorApp.jar --dest dist --win-per-user-install --win-menu --win-shortcut --win-dir-chooser --win-upgrade-uuid '41fd3758-60c3-471c-933b-0a12968038ec' --java-options '--enable-native-access=ALL-UNNAMED'
- if ($LASTEXITCODE -ne 0) { throw 'Installer creation failed (Windows packaging requires WiX)' }
+ $wixCommand = if (Test-Path build/wix5/wix.exe) { Join-Path $PSScriptRoot 'build/wix5/wix.exe' } else { 'wix' }
+ if (!(Get-Command $wixCommand -ErrorAction SilentlyContinue)) { throw 'WiX is required. See README.md for setup.' }
+ if (!(Test-Path build/runtime/bin/javaw.exe)) {
+  & jlink --add-modules java.desktop,java.sql,java.net.http,jdk.unsupported --strip-debug --no-header-files --no-man-pages --output build/runtime
+  if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime creation failed' }
+ }
+ & $wixCommand build installer/RealtorDesk.wxs -arch x64 -d "RuntimeSource=$PSScriptRoot\build\runtime" -d "AppSource=$PSScriptRoot\build\lib" -o dist/RealtorDesk-0.1.0.msi
+ if ($LASTEXITCODE -ne 0) { throw 'Windows MSI installer creation failed' }
 }
