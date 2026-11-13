@@ -31,6 +31,6 @@ if ($Installer) {
   & jlink --add-modules java.desktop,java.sql,java.net.http,jdk.unsupported --strip-debug --no-header-files --no-man-pages --output build/runtime
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime creation failed' }
  }
- & $wixCommand build installer/RealtorDesk.wxs -arch x64 -d "RuntimeSource=$PSScriptRoot\build\runtime" -d "AppSource=$PSScriptRoot\build\lib" -o dist/RealtorDesk-0.1.0.msi
+ & $wixCommand build installer/RealtorDesk.wxs installer/InstallUI.wxs -arch x64 -d "RuntimeSource=$PSScriptRoot\build\runtime" -d "AppSource=$PSScriptRoot\build\lib" -o dist/RealtorDesk-0.1.1.msi
  if ($LASTEXITCODE -ne 0) { throw 'Windows MSI installer creation failed' }
 }
