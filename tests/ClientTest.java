@@ -23,21 +23,22 @@ public class ClientTest {
                 var old=ClientStore.load(db,7);
                 check(old.type()==ClientStore.Type.UNSPECIFIED);check(old.id()==7);check(old.name().equals("Existing client"));check(old.notes().equals("Keep these notes"));
                 check(old.phone().equals("555-0100"));check(old.status().equals("Lead"));
-                try(var r=s.executeQuery("PRAGMA user_version")){check(r.next()&&r.getInt(1)==2);}
+                check(old.firstName().equals("Existing"));check(old.lastName().equals("client"));
+                try(var r=s.executeQuery("PRAGMA user_version")){check(r.next()&&r.getInt(1)==3);}
                 ClientStore.migrate(db);
-                int columns=0;try(var r=s.executeQuery("PRAGMA table_info(clients)")){while(r.next())columns++;}check(columns==7);
+                int columns=0;try(var r=s.executeQuery("PRAGMA table_info(clients)")){while(r.next())columns++;}check(columns==9);
                 for(var type:ClientStore.Type.values()) {
-                    ClientStore.save(db,7L,"Existing client","555-0100","existing@example.test","Active","Keep these notes",type);
+                    ClientStore.save(db,7L,"Existing","client","555-0100","existing@example.test","Active","Keep these notes",type);
                     check(ClientStore.load(db,7).type()==type);
                 }
                 for(String table:new String[]{"properties","calls","documents"})try(var r=s.executeQuery("SELECT client_id,notes FROM "+table)){check(r.next()&&r.getLong(1)==7&&r.getString(2).equals("Keep linked history"));}
-                ClientStore.save(db,null,"Jamie O'Brien","555-0101","jamie@example.test","Lead","A new buyer",ClientStore.Type.BUYER);
+                ClientStore.save(db,null,"Jamie","O'Brien","555-0101","jamie@example.test","Lead","A new buyer",ClientStore.Type.BUYER);
                 try(var r=s.executeQuery("SELECT COUNT(*) FROM clients")){check(r.next()&&r.getInt(1)==2);}
-                boolean rejected=false;try{ClientStore.save(db,7L," ","","","","",ClientStore.Type.SELLER);}catch(IllegalArgumentException e){rejected=true;}check(rejected);
+                boolean rejected=false;try{ClientStore.save(db,7L," ","","","","","",ClientStore.Type.SELLER);}catch(IllegalArgumentException e){rejected=true;}check(rejected);
             }
             // Verify the role after closing and reopening the database, as the installed app does.
             try(var db=DriverManager.getConnection("jdbc:sqlite:"+file);var s=db.createStatement()) {
-                check(ClientStore.load(db,7).type()==ClientStore.Type.BOTH);
+                check(ClientStore.load(db,7).type()==ClientStore.Type.BOTH);check(ClientStore.load(db,7).firstName().equals("Existing"));check(ClientStore.load(db,7).lastName().equals("client"));
                 try(var r=s.executeQuery("SELECT id FROM clients WHERE name='Jamie O''Brien'")){check(r.next());check(ClientStore.load(db,r.getLong(1)).type()==ClientStore.Type.BUYER);}
             }
         }finally{Files.deleteIfExists(file);Files.delete(folder);}
