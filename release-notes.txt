@@ -1,13 +1,13 @@
-RealtorDesk 0.1.18
+RealtorDesk 0.1.19
 
 What's new
 
-- Linked client is now an optional dropdown inside the property editor on the Properties tab.
-- Editing a property keeps its current client selected. Change or remove the assignment in the same window if needed.
-- Removed the separate Property client popup after editing. Property details and assignment now save together when you press OK.
-- New properties default to Unassigned. Editing a linked property from a client keeps the client-editor context.
+- Replaced Phone and Email columns in the Documents client list with Properties.
+- Properties shows addresses linked to that client, including multiple properties. Clients without a linked property have a blank cell.
+- Instant search now matches client names and linked property addresses. Combine names with street, city or ZIP to narrow results.
+- Property edits, assignments and detachments appear when returning to or refreshing Documents.
 
-Closed Price, notes, property addresses and existing client links are preserved.
+Document counts, client-specific document search, files and Closed Price information are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

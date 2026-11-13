@@ -17,8 +17,10 @@ public class DocumentTest {
         try(var db=DriverManager.getConnection("jdbc:sqlite::memory:");var s=db.createStatement()) {
             s.execute("PRAGMA foreign_keys=ON");
             s.execute("CREATE TABLE clients(id INTEGER PRIMARY KEY,name TEXT,phone TEXT,email TEXT)");
+            s.execute("CREATE TABLE properties(id INTEGER PRIMARY KEY,client_id INTEGER REFERENCES clients(id),address TEXT)");
             s.execute("CREATE TABLE documents(id INTEGER PRIMARY KEY,client_id INTEGER REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
             s.execute("INSERT INTO clients VALUES(31,'Alex Client','555-0101','a@example.test'),(52,'Alex Client','555-0102','b@example.test'),(73,'New Client','555-0103','new@example.test')");
+            s.execute("INSERT INTO properties VALUES(1,31,'123 Oak Street, Anchorage, AK 99501'),(2,31,'45 Cedar Lane, Juneau, AK 99801'),(3,52,'78 Pine Road, Wasilla, AK 99654'),(4,NULL,'99 Unassigned Avenue')");
             Path legacy=storage.resolve("existing-file.txt");Files.writeString(legacy,"Existing attachment");
             try(var p=db.prepareStatement("INSERT INTO documents VALUES(5,31,'Existing attachment',?,'2020-01-01')")){p.setString(1,legacy.toString());p.executeUpdate();}
             Path a=Files.createDirectories(root.resolve("a")).resolve("contract.txt"),b=Files.createDirectories(root.resolve("b")).resolve("contract.txt");
@@ -48,6 +50,10 @@ public class DocumentTest {
     static void panelChecks(Connection db,Path storage,Path source)throws Exception {
         var panel=new DocumentsPanel(db,storage);panel.clientsTable.setSize(800,400);
         check(panel.selectedClient==null);check(panel.clientsModel.getRowCount()==3);
+        check(panel.clientsTable.getColumnCount()==3);check(panel.clientsTable.getColumnName(1).equals("Properties"));
+        check(panel.clientsTable.getColumnName(2).equals("Documents"));
+        var clients=DocumentStore.clients(db);check(clients.stream().filter(c->c.id()==73).findFirst().orElseThrow().properties().isEmpty());
+        check(clients.stream().filter(c->c.id()==31).findFirst().orElseThrow().properties().contains("Cedar Lane"));
         panel.clientsTable.getRowSorter().toggleSortOrder(3);
         clickClient(panel,52,MouseEvent.BUTTON3);check(panel.selectedClient==null);
         panel.clientsTable.dispatchEvent(new MouseEvent(panel.clientsTable,MouseEvent.MOUSE_CLICKED,System.currentTimeMillis(),0,5,350,1,false,MouseEvent.BUTTON1));check(panel.selectedClient==null);
@@ -56,13 +62,13 @@ public class DocumentTest {
         int row=findViewRow(panel,31);panel.clientsTable.setRowSelectionInterval(row,row);panel.openClientButton.doClick();check(panel.selectedClient.id()==31);check(panel.documentsModel.getRowCount()==2);
         panel.showClient(73);check(panel.documentsModel.getRowCount()==0);check(panel.documentStatus.getText().startsWith("No documents"));
         DocumentStore.add(db,storage,73,source);panel.refreshVisible();check(panel.documentsModel.getRowCount()==1);panel.showClients();
-        int modelRow=panel.clientsTable.convertRowIndexToModel(findViewRow(panel,73));check(((Number)panel.clientsModel.getValueAt(modelRow,4)).longValue()==1);
+        int modelRow=panel.clientsTable.convertRowIndexToModel(findViewRow(panel,73));check(((Number)panel.clientsModel.getValueAt(modelRow,3)).longValue()==1);
         try(var s=db.createStatement()){s.execute("UPDATE clients SET name='Renamed Client' WHERE id=52");}
         panel.showClient(52);check(panel.clientTitle.getText().equals("Documents / Renamed Client"));check(panel.documentsModel.getRowCount()==1);
         searchChecks(panel,storage,source);
     }
     static void searchChecks(DocumentsPanel panel,Path storage,Path source)throws Exception {
-        panel.showClients();panel.clientSearch.setText("A@EXAMPLE");check(panel.clientsTable.getRowCount()==1);check(panel.clientStatus.getText().equals("1 of 3 clients"));
+        panel.showClients();panel.clientSearch.setText("Oak");check(panel.clientsTable.getRowCount()==1);check(panel.clientStatus.getText().equals("1 of 3 clients"));
         clickClient(panel,31,MouseEvent.BUTTON1);check(panel.selectedClient.id()==31);
         panel.documentSearch.setText("EXISTING 2020");check(panel.documentsTable.getRowCount()==1);check(panel.documentStatus.getText().equals("1 of 2 documents"));
         panel.documentsTable.getRowSorter().toggleSortOrder(1);panel.documentsTable.setRowSelectionInterval(0,0);
@@ -71,15 +77,27 @@ public class DocumentTest {
         panel.documentSearch.setText("contract.txt");check(panel.documentsTable.getRowCount()==1);
         panel.refreshVisible();check(panel.documentSearch.getText().equals("contract.txt"));check(panel.documentsTable.getRowCount()==1);
         DocumentStore.add(panel.db,storage,31,source);panel.refreshVisible();check(panel.documentsTable.getRowCount()==2);
-        panel.showClients();check(panel.clientSearch.getText().equals("A@EXAMPLE"));check(panel.clientsTable.getRowCount()==1);
-        panel.clientSearch.setText("5550102");check(panel.clientsTable.getRowCount()==1);clickClient(panel,52,MouseEvent.BUTTON1);
+        panel.showClients();check(panel.clientSearch.getText().equals("Oak"));check(panel.clientsTable.getRowCount()==1);
+        panel.clientSearch.setText("Pine");check(panel.clientsTable.getRowCount()==1);clickClient(panel,52,MouseEvent.BUTTON1);
         check(panel.selectedClient.id()==52);check(panel.documentSearch.getText().isEmpty());check(panel.documentsTable.getRowCount()==1);
         panel.documentSearch.setText("existing");check(panel.documentsTable.getRowCount()==0); // Another client's file cannot appear.
-        panel.showClients();panel.clientSearch.setText("renamed b@example");check(panel.clientsTable.getRowCount()==1);
+        panel.showClients();panel.clientSearch.setText("renamed pine");check(panel.clientsTable.getRowCount()==1);
         panel.clientSearch.setText("no such client");check(panel.clientsTable.getRowCount()==0);check(!panel.openClientButton.isEnabled());check(panel.clientStatus.getText().contains("No matches"));
         panel.refreshVisible();check(panel.clientSearch.getText().equals("no such client"));check(panel.clientsTable.getRowCount()==0);
         panel.clientSearch.setText("");check(panel.clientsTable.getRowCount()==3);check(panel.openClientButton.isEnabled());
         panel.showClient(31);panel.documentSearch.setText("contract");panel.documentSearch.setText("");check(panel.documentsTable.getRowCount()==3);
+        panel.showClients();panel.clientSearch.setText("Alex Cedar");check(panel.clientsTable.getRowCount()==1);
+        panel.clientSearch.setText("99501");check(panel.clientsTable.getRowCount()==1);
+        panel.clientSearch.setText("Unassigned");check(panel.clientsTable.getRowCount()==0);
+        panel.clientSearch.setText("a@example");check(panel.clientsTable.getRowCount()==0); // Removed contact columns do not participate in this search.
+        panel.clientSearch.setText("pine");
+        try(var s=panel.db.createStatement()){s.execute("UPDATE properties SET client_id=73 WHERE id=3");}
+        panel.refreshVisible();check(panel.clientsTable.getRowCount()==1);check(((Number)panel.clientsModel.getValueAt(panel.clientsTable.convertRowIndexToModel(0),0)).longValue()==73);
+        clickClient(panel,73,MouseEvent.BUTTON1);check(panel.selectedClient.id()==73);check(panel.documentsModel.getRowCount()==1);
+        panel.showClients();try(var s=panel.db.createStatement()){s.execute("UPDATE properties SET address='78 Birch Road, Wasilla, AK 99654' WHERE id=3");}
+        panel.refreshVisible();check(panel.clientsTable.getRowCount()==0);panel.clientSearch.setText("birch new");check(panel.clientsTable.getRowCount()==1);
+        try(var s=panel.db.createStatement()){s.execute("UPDATE properties SET client_id=NULL WHERE id=3");}
+        panel.refreshVisible();check(panel.clientsTable.getRowCount()==0);panel.clientSearch.setText("");check(panel.clientsTable.getRowCount()==3);
     }
     static int findViewRow(DocumentsPanel panel,long id) {
         for(int i=0;i<panel.clientsModel.getRowCount();i++)if(((Number)panel.clientsModel.getValueAt(i,0)).longValue()==id)return panel.clientsTable.convertRowIndexToView(i);

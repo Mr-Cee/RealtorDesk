@@ -11,9 +11,9 @@ final class DocumentsPanel extends JPanel {
     final Path storage;
     final CardLayout cards=new CardLayout();
     final JPanel content=new JPanel(cards);
-    final DefaultTableModel clientsModel=new DefaultTableModel(new String[]{"ID","Client","Phone","Email","Documents"},0) {
+    final DefaultTableModel clientsModel=new DefaultTableModel(new String[]{"ID","Client","Properties","Documents"},0) {
         public boolean isCellEditable(int r,int c){return false;}
-        public Class<?> getColumnClass(int c){return c==0||c==4?Long.class:String.class;}
+        public Class<?> getColumnClass(int c){return c==0||c==3?Long.class:String.class;}
     };
     final DefaultTableModel documentsModel=new DefaultTableModel(new String[]{"ID","Filename","Added"},0) {
         public boolean isCellEditable(int r,int c){return false;}
@@ -32,8 +32,8 @@ final class DocumentsPanel extends JPanel {
         openClientButton.addActionListener(e->openSelectedClient());clientButtons.add(openClientButton);
         var refresh=new JButton("Refresh");refresh.addActionListener(e->safe(this::showClients));clientButtons.add(refresh);
         var clientHeader=new JPanel(new GridLayout(0,1));clientHeader.add(clientButtons);
-        clientHeader.add(searchBar("Search clients:",clientSearch));
-        ClientSearch.attach(clientsTable,clientSearch,clientStatus,"clients","Add a client in the Clients tab to start organizing their documents.","Search client names, phone or email. Use multiple words to narrow results.",1,2,3);
+        clientHeader.add(searchBar("Search clients / properties:",clientSearch));
+        ClientSearch.attach(clientsTable,clientSearch,clientStatus,"clients","Add a client in the Clients tab to start organizing their documents.","Search client names or linked property addresses. Use multiple words to narrow results.",1,2);
         clientsTable.getRowSorter().addRowSorterListener(e->openClientButton.setEnabled(clientsTable.getRowCount()>0));
         clients.add(clientHeader,BorderLayout.NORTH);clients.add(new JScrollPane(clientsTable));clients.add(clientStatus,BorderLayout.SOUTH);
         clientsTable.setToolTipText("Click a client to open their documents.");
@@ -73,7 +73,7 @@ final class DocumentsPanel extends JPanel {
     }
     void showClients() throws Exception {
         selectedClient=null;var clients=DocumentStore.clients(db);clientsModel.setRowCount(0);
-        for(var client:clients)clientsModel.addRow(new Object[]{client.id(),client.name(),client.phone(),client.email(),client.documentCount()});
+        for(var client:clients)clientsModel.addRow(new Object[]{client.id(),client.name(),client.properties(),client.documentCount()});
         openClientButton.setEnabled(clientsTable.getRowCount()>0);
         cards.show(content,"clients");
     }

@@ -5,12 +5,12 @@ import java.time.LocalDate;
 import java.util.*;
 
 final class DocumentStore {
-    record Client(long id,String name,String phone,String email,long documentCount) { }
+    record Client(long id,String name,String phone,String email,long documentCount,String properties) { }
     record Document(long id,long clientId,String name,String path,String added) { }
     static java.util.List<Client> clients(Connection db) throws SQLException {
         var clients=new ArrayList<Client>();
-        try(var s=db.createStatement();var rows=s.executeQuery("SELECT c.id,c.name,c.phone,c.email,COUNT(d.id) FROM clients c LEFT JOIN documents d ON d.client_id=c.id GROUP BY c.id,c.name,c.phone,c.email ORDER BY c.name COLLATE NOCASE,c.id")) {
-            while(rows.next())clients.add(new Client(rows.getLong(1),rows.getString(2),rows.getString(3),rows.getString(4),rows.getLong(5)));
+        try(var s=db.createStatement();var rows=s.executeQuery("SELECT c.id,c.name,c.phone,c.email,COUNT(d.id),COALESCE((SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),'') FROM clients c LEFT JOIN documents d ON d.client_id=c.id GROUP BY c.id,c.name,c.phone,c.email ORDER BY c.name COLLATE NOCASE,c.id")) {
+            while(rows.next())clients.add(new Client(rows.getLong(1),rows.getString(2),rows.getString(3),rows.getString(4),rows.getLong(5),rows.getString(6)));
         }
         return clients;
     }
@@ -18,7 +18,7 @@ final class DocumentStore {
         try(var p=db.prepareStatement("SELECT id,name,phone,email FROM clients WHERE id=?")) {
             p.setLong(1,id);try(var rows=p.executeQuery()) {
                 if(!rows.next())throw new SQLException("This client no longer exists. Return to the client list and refresh.");
-                return new Client(id,rows.getString(2),rows.getString(3),rows.getString(4),0);
+                return new Client(id,rows.getString(2),rows.getString(3),rows.getString(4),0,"");
             }
         }
     }
