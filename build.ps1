@@ -28,7 +28,7 @@ foreach ($name in $deps.Keys) {
 $sources = @(Get-ChildItem src -Filter '*.java' -File | ForEach-Object FullName)
 & javac -encoding UTF-8 --release 21 -cp 'build/lib/*' -d build/classes build/BuildInfo.java @sources
 if ($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
-& jar --create --file build/lib/RealtorApp.jar --main-class RealtorApp -C build/classes . -C build/branding app-icon.png
+& jar --create --file build/lib/RealtorApp.jar --main-class RealtorApp -C build/classes . -C build/branding app-icon.png -C . release-notes.txt
 if ($LASTEXITCODE -ne 0) { throw 'JAR creation failed' }
 if ($Test) {
  New-Item -ItemType Directory -Force build/testclasses | Out-Null
@@ -39,6 +39,8 @@ if ($Test) {
  if ($LASTEXITCODE -ne 0) { throw 'Updater tests failed' }
  & java '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ThemeTest
  if ($LASTEXITCODE -ne 0) { throw 'Theme tests failed' }
+ & java '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ReleaseNotesTest
+ if ($LASTEXITCODE -ne 0) { throw 'Release notes tests failed' }
  & java --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientTest
  if ($LASTEXITCODE -ne 0) { throw 'Client tests failed' }
  & java --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientNameSearchTest
@@ -59,6 +61,8 @@ if ($Installer) {
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime checks failed' }
   & "$runtimePath/bin/java.exe" '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ThemeTest
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime theme checks failed' }
+  & "$runtimePath/bin/java.exe" '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ReleaseNotesTest
+  if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime release notes checks failed' }
   & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientTest
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime client checks failed' }
   & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientNameSearchTest

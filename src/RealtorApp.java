@@ -66,7 +66,10 @@ public class RealtorApp {
         top.add(new JLabel("RealtorDesk — Clients, homes and conversations"), BorderLayout.WEST);
         root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + HOME), BorderLayout.SOUTH);
         frame.setContentPane(root); frame.setSize(1150,700); frame.setLocationRelativeTo(null); frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); frame.setVisible(true);
-        if (!settings.getProperty("repository", "").isBlank()) checkUpdates(false);
+        SwingUtilities.invokeLater(() -> {
+            if (ReleaseNotes.shouldShow(settings, VERSION)) showReleaseNotes();
+            if (!settings.getProperty("repository", "").isBlank()) checkUpdates(false);
+        });
     }
     JMenuBar createMenuBar() {
         var menuBar = new JMenuBar();
@@ -83,6 +86,9 @@ public class RealtorApp {
         updateMenuItem.setMnemonic(java.awt.event.KeyEvent.VK_U);
         updateMenuItem.addActionListener(e -> checkUpdates(true));
         help.add(updateMenuItem);
+        var whatsNew = new JMenuItem("What's New");
+        whatsNew.addActionListener(e -> showReleaseNotes());
+        help.add(whatsNew);
         help.addSeparator();
         var about = new JMenuItem("About RealtorDesk");
         about.setMnemonic(java.awt.event.KeyEvent.VK_A);
@@ -90,6 +96,9 @@ public class RealtorApp {
         help.add(about);
         menuBar.add(help);
         return menuBar;
+    }
+    void showReleaseNotes() {
+        ReleaseNotes.show(frame, HOME.resolve("settings.properties"), settings, VERSION);
     }
     void showAbout() {
         var information = new JTextArea("RealtorDesk\nVersion " + VERSION
