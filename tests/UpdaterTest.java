@@ -25,6 +25,9 @@ public class UpdaterTest {
         var assets=new JsonArray();assets.add(asset);release.add("assets",assets);return release;
     }
     public static void main(String[] args) throws Exception {
+        // GitHub TLS needs the EC provider in the trimmed, bundled Java runtime.
+        check(Security.getProvider("SunEC")!=null);
+        var ec=KeyPairGenerator.getInstance("EC");ec.initialize(256);check(ec.generateKeyPair()!=null);
         check(Updater.compareVersions("v1.10.0","1.2.9")>0);
         check(Updater.compareVersions("1.2.0","1.2.0")==0);
         check(Updater.compareVersions("0.9.9","1.0.0")<0);
