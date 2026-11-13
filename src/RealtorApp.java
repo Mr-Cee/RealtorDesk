@@ -46,15 +46,15 @@ public class RealtorApp {
             s.execute("CREATE TABLE IF NOT EXISTS properties(id INTEGER PRIMARY KEY,client_id INTEGER REFERENCES clients(id),address TEXT NOT NULL,status TEXT,notes TEXT)");
             s.execute("CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),called TEXT,followup TEXT,notes TEXT)");
             s.execute("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
-            s.execute("PRAGMA user_version=1");
         }
+        ClientStore.migrate(db);
         var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
         var icons=new ArrayList<Image>();
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
         frame.setIconImages(icons);
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
-        tabs.add("Clients", records("clients", new String[]{"ID","Name","Phone","Email","Status","Notes"}, "SELECT * FROM clients", () -> editClient(null)));
+        tabs.add("Clients", records("clients", new String[]{"ID","Name","Phone","Email","Client type","Status","Notes"}, "SELECT id,name,phone,email,client_type,status,notes FROM clients", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Notes"}, "SELECT p.id,c.name,p.address,p.status,p.notes FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
         tabs.add("Documents", records("documents", new String[]{"ID","Client","Filename","Stored path","Added"}, "SELECT d.id,c.name,d.name,d.path,d.added FROM documents d JOIN clients c ON c.id=d.client_id", this::addDocument));
@@ -113,7 +113,11 @@ public class RealtorApp {
         var buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         var create = new JButton("Add " + type); create.addActionListener(e -> { add.run(); refresh.run(); }); buttons.add(create);
         var reload = new JButton("Refresh"); reload.addActionListener(e -> refresh.run()); buttons.add(reload);
-        if(type.equals("clients")) { var edit=new JButton("Edit selected"); edit.addActionListener(e -> { if(table.getSelectedRow()>=0) { editClient(((Number)model.getValueAt(table.convertRowIndexToModel(table.getSelectedRow()),0)).longValue()); refresh.run(); } }); buttons.add(edit); }
+        if(type.equals("clients")) {
+            Runnable editSelected=ClientTableActions.install(table,this::editClient,refresh);
+            var edit=new JButton("Edit selected");edit.addActionListener(e -> editSelected.run());buttons.add(edit);
+            table.setToolTipText("Double-click a client to edit their details.");
+        }
         if(type.equals("properties") || type.equals("documents")) {
             var open=new JButton(type.equals("properties")?"Open map":"Open document");
             open.addActionListener(e -> safe(() -> { if(table.getSelectedRow()<0) return; int r=table.convertRowIndexToModel(table.getSelectedRow()); if(type.equals("properties")) Desktop.getDesktop().browse(URI.create("https://www.google.com/maps/search/?api=1&query="+URLEncoder.encode(model.getValueAt(r,2).toString(), java.nio.charset.StandardCharsets.UTF_8))); else Desktop.getDesktop().open(Path.of(model.getValueAt(r,3).toString()).toFile()); })); buttons.add(open);
@@ -122,12 +126,16 @@ public class RealtorApp {
     }
     void editClient(Long id) { safe(() -> {
         String[] values={"","","","Lead",""};
-        if(id!=null) try(var p=db.prepareStatement("SELECT name,phone,email,status,notes FROM clients WHERE id=?")) { p.setLong(1,id); try(var r=p.executeQuery()) { if(r.next()) for(int i=0;i<5;i++) values[i]=r.getString(i+1); } }
+        ClientStore.Type selectedType=ClientStore.Type.UNSPECIFIED;
+        if(id!=null) {var client=ClientStore.load(db,id);values=new String[]{client.name(),client.phone(),client.email(),client.status(),client.notes()};selectedType=client.type();}
+        var clientType=new JComboBox<ClientStore.Type>(ClientStore.Type.values());clientType.setSelectedItem(selectedType);
         var fields=new JTextField[5]; var form=new JPanel(new GridLayout(0,2,8,8)); String[] labels={"Name *","Phone","Email","Status","Notes"};
-        for(int i=0;i<5;i++) { fields[i]=new JTextField(values[i],30); form.add(new JLabel(labels[i])); form.add(fields[i]); }
+        for(int i=0;i<5;i++) {
+            if(i==3){form.add(new JLabel("Client type"));form.add(clientType);}
+            fields[i]=new JTextField(values[i],30);form.add(new JLabel(labels[i]));form.add(fields[i]);
+        }
         if(JOptionPane.showConfirmDialog(frame,form,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
-        if(fields[0].getText().isBlank()) throw new Exception("Client name is required.");
-        try(var p=db.prepareStatement(id==null?"INSERT INTO clients(name,phone,email,status,notes) VALUES(?,?,?,?,?)":"UPDATE clients SET name=?,phone=?,email=?,status=?,notes=? WHERE id=?")) { for(int i=0;i<5;i++) p.setString(i+1,fields[i].getText().trim()); if(id!=null)p.setLong(6,id); p.executeUpdate(); }
+        ClientStore.save(db,id,fields[0].getText().trim(),fields[1].getText().trim(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),(ClientStore.Type)clientType.getSelectedItem());
     }); }
     Choice chooseClient() throws Exception {
         var choices=new ArrayList<Choice>(); try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name FROM clients ORDER BY name")) { while(r.next()) choices.add(new Choice(r.getLong(1),r.getString(2))); }
