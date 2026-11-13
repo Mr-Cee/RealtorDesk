@@ -36,7 +36,8 @@ public class RealtorApp {
     void start() throws Exception {
         Files.createDirectories(HOME.resolve("documents"));
         settings.setProperty("repository", "Mr-Cee/RealtorDesk");
-        if (Files.exists(HOME.resolve("settings.properties"))) try (var in = Files.newInputStream(HOME.resolve("settings.properties"))) { settings.load(in); }
+        settings.putAll(AppSettings.load(HOME.resolve("settings.properties")));
+        AppTheme.fromId(settings.getProperty("theme")).apply();
         java.util.concurrent.CompletableFuture.runAsync(() -> cleanupInstalledUpdates(Path.of(System.getProperty("java.io.tmpdir"))));
         db = DriverManager.getConnection("jdbc:sqlite:" + HOME.resolve("realtor.db"));
         try (var s = db.createStatement()) {
@@ -47,7 +48,6 @@ public class RealtorApp {
             s.execute("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
             s.execute("PRAGMA user_version=1");
         }
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
         var icons=new ArrayList<Image>();
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
@@ -73,9 +73,10 @@ public class RealtorApp {
         settingsButton.setBorderPainted(false);
         settingsButton.setContentAreaFilled(false);
         settingsButton.setMargin(new Insets(3, 10, 3, 10));
-        settingsButton.addActionListener(e -> configureUpdates());
+        settingsButton.addActionListener(e -> showSettings());
         menuBar.add(settingsButton);
         var help = new JMenu("Help");
+        SwingUtilities.updateComponentTreeUI(updateMenuItem);
         help.setMnemonic(java.awt.event.KeyEvent.VK_H);
         updateMenuItem.setMnemonic(java.awt.event.KeyEvent.VK_U);
         updateMenuItem.addActionListener(e -> checkUpdates(true));
@@ -107,7 +108,7 @@ public class RealtorApp {
     JPanel records(String type, String[] columns, String sql, Runnable add) {
         var panel = new JPanel(new BorderLayout(8,8));
         var model = new DefaultTableModel(columns,0) { public boolean isCellEditable(int r,int c) { return false; } };
-        var table = new JTable(model); table.setAutoCreateRowSorter(true); table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); table.setRowHeight(28);
+        var table = new JTable(model); table.setAutoCreateRowSorter(true); table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); table.setRowHeight(28);table.setFillsViewportHeight(true);
         Runnable refresh = () -> safe(() -> { model.setRowCount(0); try(var s=db.createStatement();var rs=s.executeQuery(sql)) { while(rs.next()) { Object[] row=new Object[columns.length]; for(int i=0;i<row.length;i++) row[i]=rs.getObject(i+1); model.addRow(row); } } });
         var buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         var create = new JButton("Add " + type); create.addActionListener(e -> { add.run(); refresh.run(); }); buttons.add(create);
@@ -143,7 +144,37 @@ public class RealtorApp {
     void addCall() { safe(() -> { var c=chooseClient();if(c==null)return;var v=form("Log call","Follow-up date (YYYY-MM-DD, optional)","Call notes");if(v==null)return;if(!v[0].isBlank())LocalDate.parse(v[0]);execute("INSERT INTO calls(client_id,called,followup,notes) VALUES(?,?,?,?)",c.id,LocalDateTime.now().toString(),v[0],v[1]); }); }
     void addDocument() { safe(() -> { var c=chooseClient();if(c==null)return;var picker=new JFileChooser();if(picker.showOpenDialog(frame)!=JFileChooser.APPROVE_OPTION)return;var source=picker.getSelectedFile().toPath();var dest=HOME.resolve("documents").resolve(UUID.randomUUID()+"-"+source.getFileName());Files.copy(source,dest);try { execute("INSERT INTO documents(client_id,name,path,added) VALUES(?,?,?,?)",c.id,source.getFileName().toString(),dest.toString(),LocalDate.now().toString()); } catch(Exception e) { Files.deleteIfExists(dest); throw e; } }); }
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }
-    void configureUpdates() { safe(() -> { String repo=JOptionPane.showInputDialog(frame,"Public GitHub repository (owner/repository)",settings.getProperty("repository",""));if(repo==null)return;repo=repo.trim();if(!repo.isEmpty()&&!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"))throw new Exception("Use owner/repository format.");settings.setProperty("repository",repo);try(var out=Files.newOutputStream(HOME.resolve("settings.properties"))) {settings.store(out,"RealtorDesk");}if(!repo.isEmpty())checkUpdates(true); }); }
+    void showSettings() {
+        AppTheme previous=AppTheme.fromId(settings.getProperty("theme"));
+        var theme=new JComboBox<AppTheme>(AppTheme.values());theme.setSelectedItem(previous);
+        var repository=new JTextField(settings.getProperty("repository","Mr-Cee/RealtorDesk"),30);
+        var form=new JPanel(new GridBagLayout());
+        var layout=new GridBagConstraints();layout.insets=new Insets(6,6,6,6);layout.anchor=GridBagConstraints.WEST;
+        layout.gridx=0;layout.gridy=0;form.add(new JLabel("Theme"),layout);
+        layout.gridx=1;layout.fill=GridBagConstraints.HORIZONTAL;layout.weightx=1;form.add(theme,layout);
+        layout.gridx=0;layout.gridy=1;layout.gridwidth=2;form.add(new JLabel("Preview a theme, then Save to keep it. Cancel restores your previous theme."),layout);
+        layout.gridy=2;layout.gridwidth=1;layout.weightx=0;form.add(new JLabel("Update repository"),layout);
+        layout.gridx=1;layout.weightx=1;form.add(repository,layout);
+        layout.gridx=0;layout.gridy=3;layout.gridwidth=2;form.add(new JLabel("GitHub owner/repository. Leave blank to turn off startup checks."),layout);
+        theme.addActionListener(e -> ((AppTheme)theme.getSelectedItem()).apply());
+        boolean saved=false;
+        try {
+            while(true) {
+                Object[] choices={"Save","Cancel"};
+                int result=JOptionPane.showOptionDialog(frame,form,"Settings",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE,null,choices,choices[0]);
+                if(result!=0)return;
+                String repo=repository.getText().trim();
+                if(!repo.isEmpty()&&!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")) {
+                    JOptionPane.showMessageDialog(frame,"Use owner/repository format for GitHub.","Check settings",JOptionPane.ERROR_MESSAGE);continue;
+                }
+                var updated=new Properties();updated.putAll(settings);updated.setProperty("repository",repo);
+                updated.setProperty("theme",((AppTheme)theme.getSelectedItem()).id);
+                AppSettings.save(HOME.resolve("settings.properties"),updated);
+                settings.clear();settings.putAll(updated);saved=true;return;
+            }
+        } catch(Exception e){JOptionPane.showMessageDialog(frame,e.getMessage(),"Settings could not be saved",JOptionPane.ERROR_MESSAGE);}
+        finally {if(!saved)previous.apply();}
+    }
     static boolean newer(String tag) {
         try { return Updater.compareVersions(tag, VERSION)>0; } catch(IllegalArgumentException e) { return false; }
     }
