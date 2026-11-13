@@ -15,7 +15,7 @@ public class RealtorApp {
     final JFrame frame = new JFrame("RealtorDesk • " + VERSION);
     final Properties settings = new Properties();
     Connection db;
-    final JButton updateButton = new JButton("Check for updates");
+    final JMenuItem updateMenuItem = new JMenuItem("Check for updates");
     boolean updateBusy;
     record Choice(long id, String name) { public String toString() { return name; } }
 
@@ -36,6 +36,7 @@ public class RealtorApp {
             s.execute("PRAGMA user_version=1");
         }
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","Name","Phone","Email","Status","Notes"}, "SELECT * FROM clients", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Notes"}, "SELECT p.id,c.name,p.address,p.status,p.notes FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
@@ -45,13 +46,47 @@ public class RealtorApp {
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());
         top.add(new JLabel("RealtorDesk — Clients, homes and conversations"), BorderLayout.WEST);
-        var actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        updateButton.addActionListener(e -> checkUpdates(true)); actions.add(updateButton);
-        var settingsButton = new JButton("Settings"); settingsButton.addActionListener(e -> configureUpdates()); actions.add(settingsButton);
-        top.add(actions, BorderLayout.EAST);
         root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + HOME), BorderLayout.SOUTH);
         frame.setContentPane(root); frame.setSize(1150,700); frame.setLocationRelativeTo(null); frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); frame.setVisible(true);
         if (!settings.getProperty("repository", "").isBlank()) checkUpdates(false);
+    }
+    JMenuBar createMenuBar() {
+        var menuBar = new JMenuBar();
+        var settingsButton = new JButton("Settings");
+        settingsButton.setMnemonic(java.awt.event.KeyEvent.VK_S);
+        settingsButton.setBorderPainted(false);
+        settingsButton.setContentAreaFilled(false);
+        settingsButton.setMargin(new Insets(3, 10, 3, 10));
+        settingsButton.addActionListener(e -> configureUpdates());
+        menuBar.add(settingsButton);
+        var help = new JMenu("Help");
+        help.setMnemonic(java.awt.event.KeyEvent.VK_H);
+        updateMenuItem.setMnemonic(java.awt.event.KeyEvent.VK_U);
+        updateMenuItem.addActionListener(e -> checkUpdates(true));
+        help.add(updateMenuItem);
+        help.addSeparator();
+        var about = new JMenuItem("About RealtorDesk");
+        about.setMnemonic(java.awt.event.KeyEvent.VK_A);
+        about.addActionListener(e -> showAbout());
+        help.add(about);
+        menuBar.add(help);
+        return menuBar;
+    }
+    void showAbout() {
+        var information = new JTextArea("RealtorDesk\nVersion " + VERSION
+                + "\n\nA desktop organizer for individual realtors."
+                + "\nManage clients, properties, calls, follow-ups and paperwork."
+                + "\n\nYour records and attachments are stored locally on this computer."
+                + "\nData folder: " + HOME
+                + "\n\nProject and releases:\nhttps://github.com/Mr-Cee/RealtorDesk");
+        information.setEditable(false);
+        information.setOpaque(false);
+        information.setFont(UIManager.getFont("Label.font"));
+        information.setLineWrap(true);
+        information.setWrapStyleWord(true);
+        information.setColumns(46);
+        information.setCaretPosition(0);
+        JOptionPane.showMessageDialog(frame, information, "About RealtorDesk", JOptionPane.INFORMATION_MESSAGE);
     }
     JPanel records(String type, String[] columns, String sql, Runnable add) {
         var panel = new JPanel(new BorderLayout(8,8));
@@ -98,7 +133,7 @@ public class RealtorApp {
     }
     void checkUpdates(boolean manual) {
         if(updateBusy) return;
-        updateBusy=true; updateButton.setEnabled(false); updateButton.setText("Checking...");
+        updateBusy=true; updateMenuItem.setEnabled(false); updateMenuItem.setText("Checking...");
         String repo=settings.getProperty("repository", "Mr-Cee/RealtorDesk");
         new SwingWorker<Optional<Updater.Update>,Void>() {
             protected Optional<Updater.Update> doInBackground() throws Exception {
@@ -115,7 +150,7 @@ public class RealtorApp {
             }
         }.execute();
     }
-    void finishUpdate() { updateBusy=false;updateButton.setEnabled(true);updateButton.setText("Check for updates"); }
+    void finishUpdate() { updateBusy=false;updateMenuItem.setEnabled(true);updateMenuItem.setText("Check for updates"); }
     void updateError(Exception error) {
         Throwable cause=error;while(cause.getCause()!=null)cause=cause.getCause();
         JOptionPane.showMessageDialog(frame,cause.getMessage(),"Update could not complete",JOptionPane.ERROR_MESSAGE);
@@ -123,7 +158,7 @@ public class RealtorApp {
     void downloadUpdate(Updater.Update update) {
         final Path installFolder;
         try { installFolder=Updater.installationFolder(); } catch(Exception e) { updateError(e);return; }
-        updateBusy=true;updateButton.setEnabled(false);updateButton.setText("Downloading...");
+        updateBusy=true;updateMenuItem.setEnabled(false);updateMenuItem.setText("Downloading...");
         var dialog=new JDialog(frame,"Downloading RealtorDesk "+update.version(),true);
         var bar=new JProgressBar(0,100);bar.setStringPainted(true);
         var panel=new JPanel(new BorderLayout(10,10));panel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
