@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.4).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.5).
 
 ## Run and package
 
@@ -17,6 +17,10 @@ The build uses pinned JDBC, logging and JSON dependencies from the local Maven c
 Version 0.1.4 introduces a native Windows launcher that hosts Java inside the RealtorDesk.exe process rather than spawning javaw.exe. Desktop and Start menu shortcuts, the taskbar/window icon, and the installed-program icon use the bundled house emblem. Update restarts use RealtorDesk.exe. When an older updater reopens javaw.exe after installing 0.1.4, the app switches to its native launcher before creating windows. The executable needs its adjacent app and runtime folders; it is not a standalone single-file distribution. The installer remains an MSI, which is also the format the in-app updater downloads.
 
 Native packaging tests temporarily run the actual generated EXE with a probe entry point to verify the process name, bundled JVM, icon and SQLite; the probe is removed and the production entry point restored before building the MSI. Local jpackage may be blocked by the Work session's Windows writable-directory checks; the GitHub Windows runner performs the complete native build and launcher verification.
+
+Version 0.1.5 caches verified installers under `%TEMP%/RealtorDesk-updates`. Choosing Not now retains the installer across restarts. Each update check asks GitHub for the latest stable version, then rehashes a matching saved installer before offering installation; only missing or damaged installers are downloaded again. Cache identities include the source URL, hash and size. Verified downloads left by older versions can also be reused. Cache locks and an active installer PID marker prevent normal download/cleanup operations from touching an update in progress.
+
+After the updated installed app opens, startup cleanup removes installers and logs for that version and older versions, including recognized pre-cache temporary folders. It also runs on subsequent update checks. Pending newer installers do not expire when installation is deferred or fails. Failure logs and interrupted incomplete downloads expire after seven days. Cleanup is restricted to app-owned temporary folders, rejects paths that escape those folders through links, and leaves unrelated folders alone. Development launches do not trigger installed-version cleanup. If Windows has a file locked, cleanup retries on a later startup/check. Client records, attachments, and Windows Installer's own repair/uninstall cache are not touched.
 
 Version 0.1.1 adds a folder-selection screen with a Browse dialog. Choose a writable installation folder; setup remains per-user and does not request administrator rights. Both shortcuts resolve the chosen folder, and setup saves it for future upgrades. Client data remains under `%LOCALAPPDATA%/RealtorDesk`. To relocate an existing installation, uninstall it first and then install to the new folder; the uninstaller leaves client data in place.
 
