@@ -22,6 +22,7 @@ final class DocumentsPanel extends JPanel {
     final JTable clientsTable=table(clientsModel),documentsTable=table(documentsModel);
     final JLabel clientTitle=new JLabel(),clientDetails=new JLabel(),clientStatus=new JLabel(),documentStatus=new JLabel();
     final JButton openClientButton=new JButton("Open client documents");
+    final JTextField clientSearch=new JTextField(25),documentSearch=new JTextField(25);
     DocumentStore.Client selectedClient;
 
     DocumentsPanel(Connection db,Path storage) {
@@ -30,8 +31,11 @@ final class DocumentsPanel extends JPanel {
         var clientButtons=new JPanel(new FlowLayout(FlowLayout.LEFT));
         openClientButton.addActionListener(e->openSelectedClient());clientButtons.add(openClientButton);
         var refresh=new JButton("Refresh");refresh.addActionListener(e->safe(this::showClients));clientButtons.add(refresh);
-        clientButtons.add(new JLabel("Click a client to view their documents."));
-        clients.add(clientButtons,BorderLayout.NORTH);clients.add(new JScrollPane(clientsTable));clients.add(clientStatus,BorderLayout.SOUTH);
+        var clientHeader=new JPanel(new GridLayout(0,1));clientHeader.add(clientButtons);
+        clientHeader.add(searchBar("Search clients:",clientSearch));
+        ClientSearch.attach(clientsTable,clientSearch,clientStatus,"clients","Add a client in the Clients tab to start organizing their documents.","Search client names, phone or email. Use multiple words to narrow results.",1,2,3);
+        clientsTable.getRowSorter().addRowSorterListener(e->openClientButton.setEnabled(clientsTable.getRowCount()>0));
+        clients.add(clientHeader,BorderLayout.NORTH);clients.add(new JScrollPane(clientsTable));clients.add(clientStatus,BorderLayout.SOUTH);
         clientsTable.setToolTipText("Click a client to open their documents.");
         clientsTable.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){
             if(!SwingUtilities.isLeftMouseButton(e)||e.getClickCount()!=1)return;
@@ -49,7 +53,9 @@ final class DocumentsPanel extends JPanel {
         var reload=new JButton("Refresh");reload.addActionListener(e->refreshVisible());actions.add(reload);
         clientTitle.setFont(clientTitle.getFont().deriveFont(Font.BOLD,18));
         var heading=new JPanel(new GridLayout(0,1,0,3));heading.setBorder(BorderFactory.createEmptyBorder(0,8,6,8));heading.add(clientTitle);heading.add(clientDetails);
-        header.add(actions,BorderLayout.NORTH);header.add(heading,BorderLayout.SOUTH);
+        header.add(actions,BorderLayout.NORTH);header.add(heading,BorderLayout.CENTER);
+        header.add(searchBar("Search documents:",documentSearch),BorderLayout.SOUTH);
+        ClientSearch.attach(documentsTable,documentSearch,documentStatus,"documents","No documents yet. Add a document to get started.","Search this client's document filenames or added dates. Use multiple words to narrow results.",1,2);
         documents.add(header,BorderLayout.NORTH);documents.add(new JScrollPane(documentsTable));documents.add(documentStatus,BorderLayout.SOUTH);
         documentsTable.addMouseListener(new MouseAdapter(){public void mouseClicked(MouseEvent e){
             if(SwingUtilities.isLeftMouseButton(e)&&e.getClickCount()==2&&documentsTable.rowAtPoint(e.getPoint())>=0){int row=documentsTable.rowAtPoint(e.getPoint());documentsTable.setRowSelectionInterval(row,row);openDocument();}
@@ -60,11 +66,15 @@ final class DocumentsPanel extends JPanel {
         var table=new JTable(model);table.setAutoCreateRowSorter(true);table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);table.setRowHeight(28);table.setFillsViewportHeight(true);
         table.removeColumn(table.getColumnModel().getColumn(0));return table;
     }
+    static JPanel searchBar(String title,JTextField field) {
+        var bar=new JPanel(new FlowLayout(FlowLayout.LEFT));var label=new JLabel(title);label.setLabelFor(field);
+        var clear=new JButton("Clear");clear.addActionListener(e->{field.setText("");field.requestFocusInWindow();});
+        bar.add(label);bar.add(field);bar.add(clear);return bar;
+    }
     void showClients() throws Exception {
         selectedClient=null;var clients=DocumentStore.clients(db);clientsModel.setRowCount(0);
         for(var client:clients)clientsModel.addRow(new Object[]{client.id(),client.name(),client.phone(),client.email(),client.documentCount()});
-        openClientButton.setEnabled(!clients.isEmpty());
-        clientStatus.setText(clients.isEmpty()?"Add a client in the Clients tab to start organizing their documents.":clients.size()+" clients. Clients with no documents are included.");
+        openClientButton.setEnabled(clientsTable.getRowCount()>0);
         cards.show(content,"clients");
     }
     void openSelectedClient() {
@@ -73,12 +83,13 @@ final class DocumentsPanel extends JPanel {
     }
     void showClient(long clientId) throws Exception {
         var client=DocumentStore.client(db,clientId);var documents=DocumentStore.documents(db,clientId);
+        boolean changedClient=selectedClient==null||selectedClient.id()!=clientId;
         selectedClient=client;documentsModel.setRowCount(0);
+        if(changedClient)documentSearch.setText("");
         for(var document:documents)documentsModel.addRow(new Object[]{document.id(),document.name(),document.added()});
         clientTitle.setText("Documents / "+client.name());
         String email=client.email()==null?"":client.email(),phone=client.phone()==null?"":client.phone();
         clientDetails.setText(email+(email.isBlank()||phone.isBlank()?"":"  |  ")+phone);
-        documentStatus.setText(documents.isEmpty()?"No documents yet. Add a document to get started.":documents.size()+" document"+(documents.size()==1?"":"s"));
         cards.show(content,"documents");
     }
     void refreshVisible() {safe(()->{if(selectedClient==null)showClients();else showClient(selectedClient.id());});}
@@ -89,12 +100,15 @@ final class DocumentsPanel extends JPanel {
         DocumentStore.add(db,storage,clientId,picker.getSelectedFile().toPath());showClient(clientId);
     });}
     void openDocument() {safe(()->{
-        int row=documentsTable.getSelectedRow();if(selectedClient==null||row<0)return;
-        long id=((Number)documentsModel.getValueAt(documentsTable.convertRowIndexToModel(row),0)).longValue();
-        Path path=DocumentStore.file(db,selectedClient.id(),id);
+        Path path=selectedDocumentFile();if(path==null)return;
         if(!Desktop.isDesktopSupported()||!Desktop.getDesktop().isSupported(Desktop.Action.OPEN))throw new Exception("Opening documents is not supported on this computer.");
         Desktop.getDesktop().open(path.toFile());
     });}
+    Path selectedDocumentFile() throws Exception {
+        int row=documentsTable.getSelectedRow();if(selectedClient==null||row<0)return null;
+        long id=((Number)documentsModel.getValueAt(documentsTable.convertRowIndexToModel(row),0)).longValue();
+        return DocumentStore.file(db,selectedClient.id(),id);
+    }
     interface Work{void run()throws Exception;}
     void safe(Work work){try{work.run();}catch(Exception e){JOptionPane.showMessageDialog(this,e.getMessage(),"Documents",JOptionPane.ERROR_MESSAGE);}}
 }

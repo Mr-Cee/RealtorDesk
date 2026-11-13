@@ -1,14 +1,13 @@
-RealtorDesk 0.1.12
+RealtorDesk 0.1.13
 
 What's new
 
-- The Clients tab no longer displays the internal ID column. Linked records and client editing still use the IDs behind the scenes.
-- New Date Last Communicated column for tracking your most recent contact with each client.
-- Choose a date from a calendar in Add Client or Edit Client, with month/year navigation and a Today shortcut.
-- Leave the date blank or use Clear to remove it. Dates display as YYYY-MM-DD and sort chronologically.
-- Instant search includes communication dates alongside names, seller addresses and other client details.
+- Instant Search clients on the Documents tab filters by client name, phone or email.
+- Search documents inside a client's section by filename or added date.
+- Both searches support multiple words, ignore case and accents, and include Clear buttons and matching counts.
+- Returning to the client list keeps your client search. Opening a client starts with all of their documents; refreshing or adding a document keeps the current document search.
 
-Existing client records, seller address information, and linked documents, properties and calls are preserved. Existing communication dates start blank so you can enter the correct date.
+Search stays within the selected client's documents. Your existing files and linked records are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

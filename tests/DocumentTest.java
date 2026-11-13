@@ -59,6 +59,27 @@ public class DocumentTest {
         int modelRow=panel.clientsTable.convertRowIndexToModel(findViewRow(panel,73));check(((Number)panel.clientsModel.getValueAt(modelRow,4)).longValue()==1);
         try(var s=db.createStatement()){s.execute("UPDATE clients SET name='Renamed Client' WHERE id=52");}
         panel.showClient(52);check(panel.clientTitle.getText().equals("Documents / Renamed Client"));check(panel.documentsModel.getRowCount()==1);
+        searchChecks(panel,storage,source);
+    }
+    static void searchChecks(DocumentsPanel panel,Path storage,Path source)throws Exception {
+        panel.showClients();panel.clientSearch.setText("A@EXAMPLE");check(panel.clientsTable.getRowCount()==1);check(panel.clientStatus.getText().equals("1 of 3 clients"));
+        clickClient(panel,31,MouseEvent.BUTTON1);check(panel.selectedClient.id()==31);
+        panel.documentSearch.setText("EXISTING 2020");check(panel.documentsTable.getRowCount()==1);check(panel.documentStatus.getText().equals("1 of 2 documents"));
+        panel.documentsTable.getRowSorter().toggleSortOrder(1);panel.documentsTable.setRowSelectionInterval(0,0);
+        check(Files.readString(panel.selectedDocumentFile()).equals("Existing attachment"));
+        panel.documentSearch.setText(".*");check(panel.documentsTable.getRowCount()==0);check(panel.documentStatus.getText().contains("No matches"));check(panel.selectedDocumentFile()==null);
+        panel.documentSearch.setText("contract.txt");check(panel.documentsTable.getRowCount()==1);
+        panel.refreshVisible();check(panel.documentSearch.getText().equals("contract.txt"));check(panel.documentsTable.getRowCount()==1);
+        DocumentStore.add(panel.db,storage,31,source);panel.refreshVisible();check(panel.documentsTable.getRowCount()==2);
+        panel.showClients();check(panel.clientSearch.getText().equals("A@EXAMPLE"));check(panel.clientsTable.getRowCount()==1);
+        panel.clientSearch.setText("5550102");check(panel.clientsTable.getRowCount()==1);clickClient(panel,52,MouseEvent.BUTTON1);
+        check(panel.selectedClient.id()==52);check(panel.documentSearch.getText().isEmpty());check(panel.documentsTable.getRowCount()==1);
+        panel.documentSearch.setText("existing");check(panel.documentsTable.getRowCount()==0); // Another client's file cannot appear.
+        panel.showClients();panel.clientSearch.setText("renamed b@example");check(panel.clientsTable.getRowCount()==1);
+        panel.clientSearch.setText("no such client");check(panel.clientsTable.getRowCount()==0);check(!panel.openClientButton.isEnabled());check(panel.clientStatus.getText().contains("No matches"));
+        panel.refreshVisible();check(panel.clientSearch.getText().equals("no such client"));check(panel.clientsTable.getRowCount()==0);
+        panel.clientSearch.setText("");check(panel.clientsTable.getRowCount()==3);check(panel.openClientButton.isEnabled());
+        panel.showClient(31);panel.documentSearch.setText("contract");panel.documentSearch.setText("");check(panel.documentsTable.getRowCount()==3);
     }
     static int findViewRow(DocumentsPanel panel,long id) {
         for(int i=0;i<panel.clientsModel.getRowCount();i++)if(((Number)panel.clientsModel.getValueAt(i,0)).longValue()==id)return panel.clientsTable.convertRowIndexToView(i);
