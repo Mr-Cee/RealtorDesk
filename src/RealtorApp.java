@@ -15,6 +15,8 @@ public class RealtorApp {
     final JFrame frame = new JFrame("RealtorDesk • " + VERSION);
     final Properties settings = new Properties();
     Connection db;
+    final java.util.List<Runnable> recordRefreshers=new ArrayList<>();
+    void refreshRecords(){for(var refresh:recordRefreshers)refresh.run();}
     final JMenuItem updateMenuItem = new JMenuItem("Check for updates");
     boolean updateBusy;
     record AvailableUpdate(Updater.Update update,Path cachedInstaller) { }
@@ -47,19 +49,19 @@ public class RealtorApp {
             s.execute("CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),called TEXT,followup TEXT,notes TEXT)");
             s.execute("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
         }
-        ClientStore.migrate(db);
+        ClientStore.migrate(db);PropertyStore.migrate(db);
         var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
         var icons=new ArrayList<Image>();
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
         frame.setIconImages(icons);
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
-        tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Seller address","Date Last Communicated","Status","Notes"}, "SELECT id,first_name,last_name,phone,email,client_type,seller_address,last_communicated,status,notes FROM clients", () -> editClient(null)));
+        tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Notes"}, "SELECT p.id,c.name,p.address,p.status,p.notes FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
         var documents=new DocumentsPanel(db,HOME.resolve("documents"));
         tabs.add("Documents",documents);
-        tabs.addChangeListener(e->{if(tabs.getSelectedComponent()==documents)documents.refreshVisible();});
+        tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();});
         var root = new JPanel(new BorderLayout(10,10));
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());
@@ -121,12 +123,13 @@ public class RealtorApp {
         var model = new DefaultTableModel(columns,0) { public boolean isCellEditable(int r,int c) { return false; } };
         var table = new JTable(model); table.setAutoCreateRowSorter(true); table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); table.setRowHeight(28);table.setFillsViewportHeight(true);
         Runnable refresh = () -> safe(() -> { model.setRowCount(0); try(var s=db.createStatement();var rs=s.executeQuery(sql)) { while(rs.next()) { Object[] row=new Object[columns.length]; for(int i=0;i<row.length;i++) row[i]=rs.getObject(i+1); model.addRow(row); } } });
+        recordRefreshers.add(refresh);
         var buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        var create = new JButton("Add " + type); create.addActionListener(e -> { add.run(); refresh.run(); }); buttons.add(create);
+        var create = new JButton("Add " + type); create.addActionListener(e -> { add.run(); refreshRecords(); }); buttons.add(create);
         var reload = new JButton("Refresh"); reload.addActionListener(e -> refresh.run()); buttons.add(reload);
         if(type.equals("clients")) {
             ClientTableActions.hideId(table);
-            Runnable editSelected=ClientTableActions.install(table,this::editClient,refresh);
+            Runnable editSelected=ClientTableActions.install(table,this::editClient,this::refreshRecords);
             var edit=new JButton("Edit selected");edit.addActionListener(e -> editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click a client to edit their details.");
             var search=new JTextField(23);var label=new JLabel("Search clients:");label.setLabelFor(search);buttons.add(label);buttons.add(search);
@@ -135,6 +138,9 @@ public class RealtorApp {
             ClientSearch.attach(table,search,count);
         }
         if(type.equals("properties")) {
+            Runnable editSelected=ClientTableActions.install(table,this::editProperty,this::refreshRecords);
+            var edit=new JButton("Edit selected");edit.addActionListener(e->editSelected.run());buttons.add(edit);
+            table.setToolTipText("Double-click to edit a property or change its client.");
             var open=new JButton("Open map");
             open.addActionListener(e -> safe(() -> {if(table.getSelectedRow()<0)return;int row=table.convertRowIndexToModel(table.getSelectedRow());Desktop.getDesktop().browse(URI.create("https://www.google.com/maps/search/?api=1&query="+URLEncoder.encode(model.getValueAt(row,2).toString(),java.nio.charset.StandardCharsets.UTF_8)));}));buttons.add(open);
         }
@@ -152,21 +158,18 @@ public class RealtorApp {
             if(i==4){form.add(new JLabel("Client type"));form.add(clientType);}
             fields[i]=new JTextField(values[i],30);form.add(new JLabel(labels[i]));form.add(fields[i]);
         }
-        var address=new JTextField(savedAddress,30);
-        var addressLabel=new JLabel("Seller address");
-        address.setToolTipText("Street, unit, city, state and ZIP. Available for Seller or Buyer & Seller clients.");
-        Runnable updateAddress=()->{boolean enabled=((ClientStore.Type)clientType.getSelectedItem()).isSeller();address.setEnabled(enabled);addressLabel.setEnabled(enabled);};
-        clientType.addActionListener(e->updateAddress.run());updateAddress.run();
-        form.add(addressLabel);form.add(address);
         var communicated=new DatePicker(savedDate);form.add(new JLabel("Date Last Communicated"));form.add(communicated);
         if(id!=null&&(previousName.contains(",")||previousName.trim().split("(?U)\\s+").length>2)) {
             var original=new JTextField(previousName,30);original.setEditable(false);form.add(new JLabel("Full name on file"));form.add(original);
         }
         form.setBorder(BorderFactory.createTitledBorder("Client information"));
         var keyDates=new KeyDatesPanel(savedKeyDates);
-        var editor=new JPanel();editor.setLayout(new BoxLayout(editor,BoxLayout.Y_AXIS));editor.add(form);editor.add(Box.createVerticalStrut(8));editor.add(keyDates);
-        if(JOptionPane.showConfirmDialog(frame,editor,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
-        ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),address.getText(),communicated.date(),keyDates.dates());
+        var linkedProperties=new ClientPropertiesPanel(db,id);
+        var editor=new JPanel();editor.setLayout(new BoxLayout(editor,BoxLayout.Y_AXIS));editor.add(form);editor.add(Box.createVerticalStrut(8));editor.add(keyDates);editor.add(Box.createVerticalStrut(8));editor.add(linkedProperties);
+        var scroll=new JScrollPane(editor);scroll.setPreferredSize(new Dimension(760,Math.min(650,Math.max(350,GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds().height-180))));
+        if(JOptionPane.showConfirmDialog(frame,scroll,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
+        String legacyAddress=savedAddress;
+        PropertyStore.saveClient(db,id,()->ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),legacyAddress,communicated.date(),keyDates.dates()),linkedProperties.drafts());
     }); }
     Choice chooseClient() throws Exception {
         var choices=new ArrayList<Choice>(); try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name FROM clients ORDER BY name")) { while(r.next()) choices.add(new Choice(r.getLong(1),r.getString(2))); }
@@ -179,7 +182,16 @@ public class RealtorApp {
         if(JOptionPane.showConfirmDialog(frame,panel,title,JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return null;
         return Arrays.stream(fields).map(f->f.getText().trim()).toArray(String[]::new);
     }
-    void addProperty() { safe(() -> { var c=chooseClient();if(c==null)return; var v=form("Property","Address *","Status","Notes");if(v==null)return;if(v[0].isBlank())throw new Exception("Address is required."); execute("INSERT INTO properties(client_id,address,status,notes) VALUES(?,?,?,?)",c.id,v[0],v[1],v[2]); }); }
+    void addProperty(){editProperty(null);}
+    void editProperty(Long id){safe(()->{
+        var original=id==null?null:PropertyStore.load(db,id);
+        var property=ClientPropertiesPanel.edit(frame,original);if(property==null)return;
+        var choices=new ArrayList<Choice>();choices.add(new Choice(0,"Unassigned"));
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name,phone,email FROM clients ORDER BY name,id")){while(r.next())choices.add(new Choice(r.getLong(1),r.getString(2)+" | "+r.getString(3)+" | "+r.getString(4)+" (#"+r.getLong(1)+")"));}
+        Choice initial=choices.get(0);if(original!=null&&original.clientId()!=null)for(var c:choices)if(c.id()==original.clientId())initial=c;
+        var owner=(Choice)JOptionPane.showInputDialog(frame,"Linked client (optional)","Property client",JOptionPane.QUESTION_MESSAGE,null,choices.toArray(),initial);if(owner==null)return;
+        PropertyStore.save(db,new PropertyStore.Property(property.id(),owner.id()==0?null:owner.id(),property.address(),property.status(),property.notes()));refreshRecords();
+    });}
     void addCall() { safe(() -> { var c=chooseClient();if(c==null)return;var v=form("Log call","Follow-up date (YYYY-MM-DD, optional)","Call notes");if(v==null)return;if(!v[0].isBlank())LocalDate.parse(v[0]);execute("INSERT INTO calls(client_id,called,followup,notes) VALUES(?,?,?,?)",c.id,LocalDateTime.now().toString(),v[0],v[1]); }); }
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }
     void showSettings() {

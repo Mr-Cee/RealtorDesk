@@ -8,7 +8,7 @@ final class ClientSearch {
     static String normalize(String value){return Normalizer.normalize(value,Normalizer.Form.NFD).replaceAll("\\p{M}+","").toLowerCase(Locale.ROOT);}
     static void attach(JTable table,JTextField search,JLabel count) {
         int[] columns=java.util.stream.IntStream.range(1,table.getModel().getColumnCount()).toArray();
-        attach(table,search,count,"clients","","Search names, seller address, phone, email, client type, communication date, status or notes. Use multiple words to narrow results.",columns);
+        attach(table,search,count,"clients","","Search names, linked property addresses, phone, email, client type, communication date, status or notes. Use multiple words to narrow results.",columns);
     }
     static void attach(JTable table,JTextField search,JLabel count,String noun,String emptyMessage,String tooltip,int... columns) {
         @SuppressWarnings("unchecked") var sorter=(TableRowSorter<TableModel>)table.getRowSorter();

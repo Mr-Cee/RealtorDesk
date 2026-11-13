@@ -1,13 +1,13 @@
-RealtorDesk 0.1.14
+RealtorDesk 0.1.15
 
 What's new
 
-- Added a Key Dates section below Client information in Add/Edit Client.
-- Track Start, Offer, and Close dates independently using the calendar chooser, Today, or Clear.
-- All milestones are optional and saved with the client for future timing reports.
-- Dates are stored as separate standard date fields. Unknown milestones remain empty and will not be treated as zero-duration transactions in averages.
-
-Existing clients begin with blank Key Dates. Existing client information, communication dates, and linked records are preserved.
+- Linked properties in Add/Edit Client: attach an existing unassigned property, create a new one, edit its details, or detach it.
+- Create properties on the Properties tab without choosing a client. Edit or double-click a property later to assign, change, or remove its client.
+- Property addresses and client links stay in sync across Clients and Properties. A client may have multiple properties; each property has one optional linked client.
+- Existing seller addresses become linked property records during upgrade. Clients now show linked property addresses rather than a separate editable seller address.
+- Client and property changes made in the client editor save together. Cancel leaves the existing records unchanged. Detaching keeps the property as an unassigned record.
+- Key Dates and other existing client information are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

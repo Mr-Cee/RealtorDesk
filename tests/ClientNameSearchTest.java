@@ -30,6 +30,7 @@ public class ClientNameSearchTest {
         checks+=ClientAddressTest.run();
         checks+=ClientDateTest.run();
         checks+=KeyDatesTest.run();
+        checks+=PropertyTest.run();
         System.out.println("PASS: "+checks+" split-name migration and client-search checks");
     }
     static void searchChecks() {
