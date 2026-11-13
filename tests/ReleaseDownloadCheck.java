@@ -17,11 +17,16 @@ public class ReleaseDownloadCheck {
             if(update==null)throw new Exception("Published release could not be discovered",last);
             Path root=Files.createTempDirectory("RealtorDesk-public-release-check-");
             try {
-                Path installer=Updater.download(client,update,root,p->{});
-                try { if(Files.size(installer)!=update.size())throw new AssertionError("Downloaded size mismatch"); }
-                finally {Files.delete(installer);Files.delete(installer.getParent());}
-                System.out.println("PASS: public GitHub release "+update.version()+" discovered, downloaded and SHA-256 verified using the bundled runtime");
-            } finally {Files.delete(root);}
+                Path installer=UpdateCache.prepare(client,update,root,p->{});
+                if(Files.size(installer)!=update.size())throw new AssertionError("Downloaded size mismatch");
+                try(var noNetwork=new UpdaterTest.FakeClient(new byte[0],500,null)) {
+                    Path reused=UpdateCache.prepare(noNetwork,update,root,p->{});
+                    if(!reused.equals(installer)||noNetwork.requests!=0)throw new AssertionError("Cached installer was not reused");
+                }
+                UpdateCache.cleanup(root,update.version(),java.time.Instant.now());
+                if(Files.exists(installer))throw new AssertionError("Installed-version cache was not removed");
+                System.out.println("PASS: public GitHub release "+update.version()+" discovered, downloaded, SHA-256 verified, reused without another request, and cleaned after simulated installation using the bundled runtime");
+            } finally {Files.delete(root.resolve(UpdateCache.DIRECTORY));Files.delete(root);}
         }
     }
 }
