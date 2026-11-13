@@ -51,7 +51,7 @@ if ($Installer) {
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime checks failed' }
  }
  $nativeOutput = Join-Path $PSScriptRoot ("build/native-" + [Guid]::NewGuid().ToString('N'))
- & jpackage --type app-image --name RealtorDesk --app-version $appVersion --vendor RealtorDesk --description 'Client, property and paperwork organizer for individual realtors' --input build/lib --main-jar RealtorApp.jar --main-class RealtorApp --runtime-image $runtimePath --icon build/branding/RealtorDesk.ico --dest $nativeOutput --java-options '--enable-native-access=ALL-UNNAMED'
+ & jpackage --type app-image --name RealtorDesk --app-version $appVersion --vendor RealtorDesk --description RealtorDesk --input build/lib --main-jar RealtorApp.jar --main-class RealtorApp --runtime-image $runtimePath --icon build/branding/RealtorDesk.ico --dest $nativeOutput --java-options '--enable-native-access=ALL-UNNAMED'
  if ($LASTEXITCODE -ne 0) { throw 'Native RealtorDesk.exe launcher creation failed' }
  $imagePath = Join-Path $nativeOutput 'RealtorDesk'
  if ($Test) {
