@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. Version 0.1.1.
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.2).
 
 ## Run and package
 
@@ -9,7 +9,7 @@ From PowerShell with a JDK on PATH:
 ```powershell
 ./build.ps1
 ./run.ps1
-./build.ps1 -Installer
+./build.ps1 -Test -Installer
 ```
 
 The build uses pinned JDBC, logging and JSON dependencies from the local Maven cache when available, otherwise downloading them from Maven Central. Installer creation uses jlink and WiX directly to build a per-user Windows MSI that includes the Java runtime and libraries. End users do not need Java, SQLite, or a database service installed separately. Output is in dist/. Keep the upgrade UUID fixed across versions.
@@ -31,7 +31,7 @@ The build prefers this project-local WiX installation. WiX 7 requires explicit a
 - Log calls with optional validated follow-up dates.
 - Copy document attachments into app-managed storage and open them.
 - Sort tables; refresh to show changes in related client names.
-- Configure a public GitHub owner/repository; check latest releases at startup and on demand. New stable semantic versions offer a browser link to the release download page.
+- A dedicated Check for updates button and optional startup notification for newer stable GitHub Releases. Download progress, SHA-256 verification, installation in the current folder, and automatic restart after successful installation.
 
 ## Data
 
@@ -39,6 +39,12 @@ Records, settings, and copied attachments live in `%LOCALAPPDATA%/RealtorDesk`, 
 
 ## Release process
 
-The public repository is https://github.com/Mr-Cee/RealtorDesk and is the default update source. Set the same numeric version in RealtorApp.VERSION, build.ps1 and installer/RealtorDesk.wxs. Build and test the Windows installer, create a matching vMAJOR.MINOR.PATCH GitHub Release, and attach the MSI. No embedded GitHub token is needed for public release checks. Downloads and installation currently require user action in the browser. Code signing, verified in-app downloads, automated release builds, backups, schema migration infrastructure, editing other record types, reminders, embedded maps and multi-device sync remain future work.
+The public repository is https://github.com/Mr-Cee/RealtorDesk and is the default update source. Commit code and tests first, then increment VERSION as the final release commit on main. The Windows release workflow runs tests, builds an MSI with bundled Java, uploads the installer and checksum to a draft release, verifies the uploaded hash, and publishes it as the latest release. The workflow can also be run manually from Actions. A published version is never overwritten: increment VERSION for the next release. Releases are the installable builds; uploading source code alone does not update installed programs.
+
+The VERSION file generates the Java version constant and MSI version/name during build. Keep numeric versions compatible with Windows Installer (major/minor up to 255, build up to 65535). WiX 5.0.2 is pinned in the workflow. The workflow runs on Windows with Java 21; local builds can use a newer JDK. GitHub's temporary workflow token publishes releases; no token is shipped in the app.
+
+Users on 0.1.0 or 0.1.1 must install 0.1.2 once from Releases to obtain the new updater. Thereafter choose Check for updates, Download, then Install and restart. The app accepts only stable releases with an exactly named Windows MSI and a GitHub SHA-256 asset digest. It downloads into a unique temporary folder, checks size and hash, then starts an external Windows PowerShell helper. The helper waits for the app to close, runs Windows Installer in passive mode with the existing installation directory, and reopens the app only on success. On failure, the installer and diagnostic logs remain in the temporary folder. No scripts are downloaded from GitHub. Startup checks report failures silently; manual checks show an error and preserve the running app. In-app installation is available only when launched from a properly installed copy, not from the development build.
+
+Integrity checks use HTTPS and GitHub's asset digest; the MSI is not code-signed. Code signing, backups, schema migration infrastructure, editing other record types, reminders, embedded maps and multi-device sync remain future work. Automated updater tests cover version selection, release metadata, redirects, corrupt/truncated/oversized downloads, temporary-file cleanup and PowerShell handoff parsing. Full installation/restart testing still requires a Windows installed copy.
 
 This is a foundation prototype, not yet a production client-record system. Validate installation/upgrades and implement backups before storing your only copy of business records.
