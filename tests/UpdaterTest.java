@@ -63,6 +63,7 @@ public class UpdaterTest {
             String script=Updater.installerScript(Path.of("C:/Temp/O'Brien/update.msi"),Path.of("C:/Apps/O'Brien Realtor"),12345);
             check(script.contains("Wait-Process -Id 12345"));check(script.contains("O''Brien"));check(script.contains("/passive /norestart INSTALLFOLDER="));
             check(script.contains("@(0,3010)"));check(script.indexOf("Wait-Process")<script.indexOf("msiexec.exe"));
+            check(script.contains("RealtorDesk.exe"));check(!script.contains("javaw.exe"));
             Files.writeString(root.resolve("handoff.ps1"),script);
             // Parse the real handoff without executing any installation or launching an app.
             if(System.getProperty("os.name").startsWith("Windows")) {
