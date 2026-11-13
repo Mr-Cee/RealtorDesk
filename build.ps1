@@ -39,6 +39,8 @@ if ($Test) {
  if ($LASTEXITCODE -ne 0) { throw 'Updater tests failed' }
  & java '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ThemeTest
  if ($LASTEXITCODE -ne 0) { throw 'Theme tests failed' }
+ & java --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientTest
+ if ($LASTEXITCODE -ne 0) { throw 'Client tests failed' }
 }
 if ($Installer) {
  $wixCommand = if (Test-Path build/wix5/wix.exe) { Join-Path $PSScriptRoot 'build/wix5/wix.exe' } else { 'wix' }
@@ -53,6 +55,8 @@ if ($Installer) {
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime checks failed' }
   & "$runtimePath/bin/java.exe" '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ThemeTest
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime theme checks failed' }
+  & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientTest
+  if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime client checks failed' }
  }
  $nativeOutput = Join-Path $PSScriptRoot ("build/native-" + [Guid]::NewGuid().ToString('N'))
  & jpackage --type app-image --name RealtorDesk --app-version $appVersion --vendor RealtorDesk --description RealtorDesk --input build/lib --main-jar RealtorApp.jar --main-class RealtorApp --runtime-image $runtimePath --icon build/branding/RealtorDesk.ico --dest $nativeOutput --java-options '--enable-native-access=ALL-UNNAMED'
