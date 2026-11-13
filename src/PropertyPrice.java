@@ -16,8 +16,10 @@ final class PropertyPrice {
     static String formatted(Long cents){return cents==null?"":NumberFormat.getCurrencyInstance(Locale.US).format(BigDecimal.valueOf(cents,2));}
     static void configureTable(JTable table) {
         ClientTableActions.hideId(table);
+        var status=new DefaultTableCellRenderer();status.setHorizontalAlignment(SwingConstants.CENTER);
+        table.getColumnModel().getColumn(table.convertColumnIndexToView(3)).setCellRenderer(status);
         table.getColumnModel().getColumn(table.convertColumnIndexToView(4)).setCellRenderer(new DefaultTableCellRenderer(){
-            {setHorizontalAlignment(SwingConstants.RIGHT);}
+            {setHorizontalAlignment(SwingConstants.CENTER);}
             protected void setValue(Object value){setText(formatted(value==null?null:((Number)value).longValue()));}
         });
     }

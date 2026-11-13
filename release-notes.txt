@@ -1,14 +1,12 @@
-RealtorDesk 0.1.22
+RealtorDesk 0.1.23
 
 What's new
 
-- Replaced the inline client search/dropdown in property information with a linked-client display and Add/Remove button.
-- Add opens a popup listing all clients, with instant name, phone and email search at the top.
-- Double-click a client, or select a row and click Add at the bottom, to link them.
-- Cancel, Escape or closing the popup leaves the assignment unchanged.
-- Once linked, the button becomes Remove. Removing clears the pending client link; save the property to commit the change.
+- Centered Status and Closed Price values in the Properties table.
+- Centered the Documents count in the Documents tab's client list.
+- Removed the Calls & follow-ups tab. Existing call records remain stored in the database.
 
-Closed Price, MLS numbers, client records and property details are preserved.
+Property prices, client links, MLS numbers and documents are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

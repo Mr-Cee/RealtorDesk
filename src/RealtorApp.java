@@ -58,7 +58,6 @@ public class RealtorApp {
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
-        tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
         var documents=new DocumentsPanel(db,HOME.resolve("documents"));
         tabs.add("Documents",documents);
         tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();});
@@ -105,7 +104,7 @@ public class RealtorApp {
     void showAbout() {
         var information = new JTextArea("RealtorDesk\nVersion " + VERSION
                 + "\n\nA desktop organizer for individual realtors."
-                + "\nManage clients, properties, calls, follow-ups and paperwork."
+                + "\nManage clients, properties and paperwork."
                 + "\n\nYour records and attachments are stored locally on this computer."
                 + "\nData folder: " + HOME
                 + "\n\nProject and releases:\nhttps://github.com/Mr-Cee/RealtorDesk");

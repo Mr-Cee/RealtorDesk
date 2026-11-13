@@ -27,6 +27,8 @@ final class DocumentsPanel extends JPanel {
 
     DocumentsPanel(Connection db,Path storage) {
         super(new BorderLayout());this.db=db;this.storage=storage;
+        var documentCountRenderer=new javax.swing.table.DefaultTableCellRenderer();documentCountRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        clientsTable.getColumnModel().getColumn(clientsTable.convertColumnIndexToView(3)).setCellRenderer(documentCountRenderer);
         var clients=new JPanel(new BorderLayout(8,8));
         var clientButtons=new JPanel(new FlowLayout(FlowLayout.LEFT));
         openClientButton.addActionListener(e->openSelectedClient());clientButtons.add(openClientButton);
