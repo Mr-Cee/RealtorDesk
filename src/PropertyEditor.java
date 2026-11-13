@@ -16,6 +16,7 @@ final class PropertyEditor {
         if(chooseClient) {
             try{owner=new PropertyClientField(db,original==null?null:original.clientId());}
             catch(Exception e){JOptionPane.showMessageDialog(parent,e.getMessage(),"Property",JOptionPane.ERROR_MESSAGE);return null;}
+            var searchLabel=new JLabel("Search clients");searchLabel.setLabelFor(owner.search);form.add(searchLabel);form.add(owner.searchPanel());
             var label=new JLabel("Linked client (optional)");label.setLabelFor(owner);form.add(label);form.add(owner);
         }
         for(int i=0;i<fields.length;i++){fields[i]=new JTextField(values[i],28);var label=new JLabel(labels[i]);label.setLabelFor(fields[i]);form.add(label);form.add(fields[i]);}

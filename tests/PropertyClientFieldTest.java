@@ -24,6 +24,23 @@ final class PropertyClientFieldTest {
                 PropertyStore.save(db,new PropertyStore.Property(old.id(),field.clientId(),old.address(),old.status(),old.notes(),old.parts(),old.closedPriceCents()));check(PropertyStore.load(db,1).clientId()==null);check(PropertyStore.load(db,1).notes().equals("Keep notes"));
                 var fresh=new PropertyClientField(db,null);check(fresh.clientId()==null);
             }catch(Exception e){throw new RuntimeException(e);}});
+            try(var p=db.prepareStatement("INSERT INTO clients(name,phone,email) VALUES(?,?,?)")) {
+                for(int i=0;i<300;i++){p.setString(1,"Client "+i);p.setString(2,i==299?"(907) 555-0299":"");p.setString(3,"user"+i+"@example.test");p.executeUpdate();}
+            }
+            try(var p=db.prepareStatement("UPDATE clients SET name=? WHERE id=1")){p.setString(1,"Jos\u00e9 Smith");p.executeUpdate();}
+            SwingUtilities.invokeAndWait(()->{try {
+                var field=new PropertyClientField(db,2L);check(field.getItemCount()==303);
+                field.search.setText("5550101");check(field.getItemCount()==2);check(field.clientId()==2L);check(field.getItemAt(1).id()==1L);check(field.count.getText().equals("1 of 302 clients"));
+                field.setSelectedIndex(1);check(field.clientId()==1L);
+                field.search.setText("no matching client");check(field.getItemCount()==1);check(field.clientId()==1L);check(field.count.getText().contains("No matches"));
+                field.search.setText("JOSE smith");check(field.getItemCount()==2);check(field.getItemAt(1).id()==1L);
+                field.search.setText("client user299@example.test");check(field.getItemCount()==2);check(field.getItemAt(1).id()==302L);check(field.clientId()==1L);
+                field.search.setText("9075550299");check(field.getItemCount()==2);field.setSelectedIndex(1);check(field.clientId()==302L);
+                field.search.setText(".*");check(field.getItemCount()==1);check(field.clientId()==302L);
+                field.setSelectedIndex(0);check(field.clientId()==null);
+                field.search.setText("");check(field.getItemCount()==303);check(field.clientId()==null);
+                check(PropertyStore.load(db,1).clientId()==null); // Searching/choosing does not write before Save.
+            }catch(Exception e){throw new RuntimeException(e);}});
             try{new PropertyClientField(db,999L);throw new AssertionError();}catch(SQLException expected){checks++;}
         }return checks;
     }
