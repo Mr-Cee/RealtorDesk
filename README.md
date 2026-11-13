@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.2).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.3).
 
 ## Run and package
 
@@ -31,7 +31,8 @@ The build prefers this project-local WiX installation. WiX 7 requires explicit a
 - Log calls with optional validated follow-up dates.
 - Copy document attachments into app-managed storage and open them.
 - Sort tables; refresh to show changes in related client names.
-- A dedicated Check for updates button and optional startup notification for newer stable GitHub Releases. Download progress, SHA-256 verification, installation in the current folder, and automatic restart after successful installation.
+- Settings at the top left, alongside a Help menu containing Check for updates and About RealtorDesk. About shows the installed version, app description, local data folder and project address.
+- Help > Check for updates and optional startup notification for newer stable GitHub Releases. Download progress, SHA-256 verification, installation in the current folder, and automatic restart after successful installation.
 
 ## Data
 
