@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.5).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.6).
 
 ## Run and package
 
@@ -33,6 +33,8 @@ dotnet tool install wix --version 5.0.2 --tool-path ./build/wix5
 The build prefers this project-local WiX installation. WiX 7 requires explicit acceptance of its maintenance-fee EULA; this project does not accept it automatically. The Windows x64 MSI builds successfully with WiX 5.0.2. Its contents were inspected for the application, dependencies and bundled runtime, and SQLite insert/read and version-comparison checks pass with that runtime. Installation, shortcuts, upgrades and full UI behavior still need end-to-end testing on Windows.
 
 ## Current features
+
+Version 0.1.6 adds seven built-in themes in Settings: Classic Light, Midnight, Ocean, Forest, Plum, Sandstone and Slate. Choosing a theme previews it immediately across the app and its dialogs. Save persists the stable theme ID in the existing user settings file; it is loaded before the main window is shown, including after updates. Cancel or closing Settings restores the previously saved theme. Missing or unrecognized theme IDs safely use Classic Light. Update-repository preferences are preserved. Settings saves use a temporary file and atomic replacement where supported. Theme switching requires no app restart or extra dependencies.
 
 - Add/edit clients and their contact details, status and notes.
 - Add client-linked properties and open addresses in Google Maps in the default browser.
