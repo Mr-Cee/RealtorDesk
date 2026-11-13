@@ -139,13 +139,12 @@ final class Updater {
         String msi = installer.toAbsolutePath().toString(), folder = installFolder.toAbsolutePath().toString();
         if (msi.contains("\"") || folder.contains("\"") || msi.contains("\n") || folder.contains("\n")) throw new IllegalArgumentException("Invalid installer path.");
         String args = "/i \"" + msi + "\" /passive /norestart INSTALLFOLDER=\"" + folder + "\" /l*v \"" + msi + ".log\"";
-        String javaw = installFolder.resolve("runtime/bin/javaw.exe").toString();
-        String appArgs = "--enable-native-access=ALL-UNNAMED -cp \"" + installFolder.resolve("app") + File.separator + "*\" RealtorApp";
+        String launcher = installFolder.resolve("RealtorDesk.exe").toString();
         return "$ErrorActionPreference='Stop'\n"
                 + "try {\nWait-Process -Id " + pid + " -ErrorAction SilentlyContinue\n"
                 + "$setup=Start-Process -FilePath (Join-Path $env:WINDIR 'System32\\msiexec.exe') -ArgumentList " + psLiteral(args) + " -Wait -PassThru\n"
                 + "if ($setup.ExitCode -notin @(0,3010)) { throw ('Installer failed with code '+$setup.ExitCode+'. Log: '+" + psLiteral(msi+".log") + ") }\n"
-                + "Start-Process -FilePath " + psLiteral(javaw) + " -ArgumentList " + psLiteral(appArgs) + " -WorkingDirectory " + psLiteral(folder) + " -WindowStyle Hidden\n"
+                + "Start-Process -FilePath " + psLiteral(launcher) + " -WorkingDirectory " + psLiteral(folder) + " -WindowStyle Hidden\n"
                 + "} catch { Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'RealtorDesk update') | Out-Null }\n";
     }
     static Process launchInstaller(Path installer, Path folder) throws Exception {
