@@ -2,7 +2,9 @@ import java.sql.*;
 import java.util.*;
 
 final class PropertyStore {
-    record Property(Long id,Long clientId,String address,String status,String notes) {
+    static final String COLUMNS="id,client_id,address,status,notes,street_number,direction,street_name,street_type,unit,city,state,zip";
+    record Property(Long id,Long clientId,String address,String status,String notes,PropertyAddress parts) {
+        Property(Long id,Long clientId,String address,String status,String notes){this(id,clientId,address,status,notes,null);}
         public String toString(){return address+(status==null||status.isBlank()?"":" - "+status);}
     }
     static void migrate(Connection db)throws SQLException {
@@ -13,23 +15,35 @@ final class PropertyStore {
                 s.executeUpdate("INSERT INTO properties(client_id,address,status,notes) SELECT c.id,TRIM(c.seller_address),'','' FROM clients c WHERE TRIM(COALESCE(c.seller_address,''))<>'' AND NOT EXISTS(SELECT 1 FROM properties p WHERE p.client_id=c.id AND LOWER(TRIM(p.address))=LOWER(TRIM(c.seller_address)))");
                 s.execute("PRAGMA user_version=7");
             }
+            var columns=new HashSet<String>();try(var r=s.executeQuery("PRAGMA table_info(properties)")){while(r.next())columns.add(r.getString("name"));}
+            for(String column:new String[]{"street_number","direction","street_name","street_type","unit","city","state","zip"})if(!columns.contains(column))s.execute("ALTER TABLE properties ADD COLUMN "+column+" TEXT NOT NULL DEFAULT ''");
+            if(version<8){try(var r=s.executeQuery("SELECT id,address FROM properties");var p=db.prepareStatement("UPDATE properties SET street_number=?,direction=?,street_name=?,street_type=?,unit=?,city=?,state=?,zip=? WHERE id=?")){while(r.next()){bindAddress(p,1,PropertyAddress.legacy(r.getString(2)));p.setLong(9,r.getLong(1));p.executeUpdate();}}s.execute("PRAGMA user_version=8");}
             db.commit();
         }catch(SQLException e){db.rollback();throw e;}finally{db.setAutoCommit(auto);}
     }
     static java.util.List<Property> list(Connection db,Long clientId)throws SQLException {
         var list=new ArrayList<Property>();
-        try(var p=db.prepareStatement("SELECT id,client_id,address,status,notes FROM properties WHERE "+(clientId==null?"client_id IS NULL":"client_id=?")+" ORDER BY address COLLATE NOCASE,id")) {
+        try(var p=db.prepareStatement("SELECT "+COLUMNS+" FROM properties WHERE "+(clientId==null?"client_id IS NULL":"client_id=?")+" ORDER BY address COLLATE NOCASE,id")) {
             if(clientId!=null)p.setLong(1,clientId);try(var r=p.executeQuery()){while(r.next())list.add(read(r));}
         }return list;
     }
-    static Property read(ResultSet r)throws SQLException {long client=r.getLong(2);Long owner=r.wasNull()?null:client;return new Property(r.getLong(1),owner,r.getString(3),r.getString(4),r.getString(5));}
+    static Property read(ResultSet r)throws SQLException {long client=r.getLong(2);Long owner=r.wasNull()?null:client;return new Property(r.getLong(1),owner,r.getString(3),r.getString(4),r.getString(5),new PropertyAddress(r.getString(6),r.getString(7),r.getString(8),r.getString(9),r.getString(10),r.getString(11),r.getString(12),r.getString(13)));}
     static Property load(Connection db,long id)throws SQLException {
-        try(var p=db.prepareStatement("SELECT id,client_id,address,status,notes FROM properties WHERE id=?")){p.setLong(1,id);try(var r=p.executeQuery()){if(!r.next())throw new SQLException("Property no longer exists. Refresh the list.");return read(r);}}
+        try(var p=db.prepareStatement("SELECT "+COLUMNS+" FROM properties WHERE id=?")){p.setLong(1,id);try(var r=p.executeQuery()){if(!r.next())throw new SQLException("Property no longer exists. Refresh the list.");return read(r);}}
     }
     static void save(Connection db,Property property)throws SQLException {
         if(property.address()==null||property.address().isBlank())throw new IllegalArgumentException("Property address is required.");
-        String sql=property.id()==null?"INSERT INTO properties(client_id,address,status,notes) VALUES(?,?,?,?)":"UPDATE properties SET client_id=?,address=?,status=?,notes=? WHERE id=?";
-        try(var p=db.prepareStatement(sql)){if(property.clientId()==null)p.setNull(1,Types.INTEGER);else p.setLong(1,property.clientId());p.setString(2,property.address().trim());p.setString(3,property.status());p.setString(4,property.notes());if(property.id()!=null)p.setLong(5,property.id());if(p.executeUpdate()!=1)throw new SQLException("Property no longer exists. Refresh the list.");}
+        PropertyAddress parts=property.parts()==null?PropertyAddress.legacy(property.address()):property.parts();
+        String address=property.parts()==null?property.address().trim():parts.complete()?parts.formatted():property.address();
+        String sql=property.id()==null?"INSERT INTO properties(client_id,address,status,notes,street_number,direction,street_name,street_type,unit,city,state,zip) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)":"UPDATE properties SET client_id=?,address=?,status=?,notes=?,street_number=?,direction=?,street_name=?,street_type=?,unit=?,city=?,state=?,zip=? WHERE id=?";
+        try(var p=db.prepareStatement(sql)){if(property.clientId()==null)p.setNull(1,Types.INTEGER);else p.setLong(1,property.clientId());p.setString(2,address);p.setString(3,property.status());p.setString(4,property.notes());bindAddress(p,5,parts);if(property.id()!=null)p.setLong(13,property.id());if(p.executeUpdate()!=1)throw new SQLException("Property no longer exists. Refresh the list.");}
+    }
+    static void bindAddress(PreparedStatement p,int offset,PropertyAddress a)throws SQLException {String[] fields={a.number(),a.direction(),a.street(),a.type(),a.unit(),a.city(),a.state(),a.zip()};for(int i=0;i<fields.length;i++)p.setString(offset+i,fields[i]);}
+    static void delete(Connection db,long id,Long expectedClient)throws SQLException {
+        try(var p=db.prepareStatement("DELETE FROM properties WHERE id=? AND client_id IS ?")) {
+            p.setLong(1,id);if(expectedClient==null)p.setNull(2,Types.INTEGER);else p.setLong(2,expectedClient);
+            if(p.executeUpdate()!=1)throw new SQLException("This property changed or no longer exists. Refresh and review it before deleting.");
+        }
     }
     interface ClientSave{void run()throws Exception;}
     static void saveClient(Connection db,Long clientId,ClientSave saveClient,java.util.List<Property> desired)throws Exception {
@@ -46,9 +60,9 @@ final class PropertyStore {
                     var current=load(db,item.id());
                     if(current.clientId()!=null&&!current.clientId().equals(owner))throw new SQLException("This property is now linked to another client. Refresh and try again.");
                 }
-                save(db,new Property(item.id(),owner,item.address(),item.status(),item.notes()));
+                save(db,new Property(item.id(),owner,item.address(),item.status(),item.notes(),item.parts()));
             }
-            for(var current:original)if(!retained.contains(current.id()))save(db,new Property(current.id(),null,current.address(),current.status(),current.notes()));
+            for(var current:original)if(!retained.contains(current.id()))save(db,new Property(current.id(),null,current.address(),current.status(),current.notes(),current.parts()));
             db.commit();
         }catch(Exception e){db.rollback();throw e;}finally{db.setAutoCommit(true);}
     }

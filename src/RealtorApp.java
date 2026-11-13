@@ -141,6 +141,13 @@ public class RealtorApp {
             Runnable editSelected=ClientTableActions.install(table,this::editProperty,this::refreshRecords);
             var edit=new JButton("Edit selected");edit.addActionListener(e->editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click to edit a property or change its client.");
+            var delete=new JButton("Delete property");delete.addActionListener(e->safe(()->{
+                int row=table.getSelectedRow();if(row<0)return;
+                long id=((Number)model.getValueAt(table.convertRowIndexToModel(row),0)).longValue();
+                var property=PropertyStore.load(db,id);String message="Delete this property?\n\n"+property.address();
+                if(property.clientId()!=null)message+="\n\nWARNING: This property is attached to "+ClientStore.load(db,property.clientId()).name()+". Deleting it will remove the property and its client link. The client record will be kept.";
+                if(JOptionPane.showConfirmDialog(frame,message,"Delete property",JOptionPane.YES_NO_OPTION,JOptionPane.WARNING_MESSAGE)==JOptionPane.YES_OPTION){PropertyStore.delete(db,id,property.clientId());refreshRecords();}
+            }));buttons.add(delete);
             var open=new JButton("Open map");
             open.addActionListener(e -> safe(() -> {if(table.getSelectedRow()<0)return;int row=table.convertRowIndexToModel(table.getSelectedRow());Desktop.getDesktop().browse(URI.create("https://www.google.com/maps/search/?api=1&query="+URLEncoder.encode(model.getValueAt(row,2).toString(),java.nio.charset.StandardCharsets.UTF_8)));}));buttons.add(open);
         }
@@ -167,7 +174,10 @@ public class RealtorApp {
         var linkedProperties=new ClientPropertiesPanel(db,id);
         var editor=new JPanel();editor.setLayout(new BoxLayout(editor,BoxLayout.Y_AXIS));editor.add(form);editor.add(Box.createVerticalStrut(8));editor.add(keyDates);editor.add(Box.createVerticalStrut(8));editor.add(linkedProperties);
         var scroll=new JScrollPane(editor);scroll.setPreferredSize(new Dimension(760,Math.min(650,Math.max(350,GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds().height-180))));
-        if(JOptionPane.showConfirmDialog(frame,scroll,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
+        while(true){
+            if(JOptionPane.showConfirmDialog(frame,scroll,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)return;
+            if(Duplicates.confirm(frame,"clients",Duplicates.clients(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText(),fields[3].getText())))break;
+        }
         String legacyAddress=savedAddress;
         PropertyStore.saveClient(db,id,()->ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),legacyAddress,communicated.date(),keyDates.dates()),linkedProperties.drafts());
     }); }
@@ -185,12 +195,12 @@ public class RealtorApp {
     void addProperty(){editProperty(null);}
     void editProperty(Long id){safe(()->{
         var original=id==null?null:PropertyStore.load(db,id);
-        var property=ClientPropertiesPanel.edit(frame,original);if(property==null)return;
+        var property=PropertyEditor.edit(frame,db,original,java.util.List.of());if(property==null)return;
         var choices=new ArrayList<Choice>();choices.add(new Choice(0,"Unassigned"));
         try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name,phone,email FROM clients ORDER BY name,id")){while(r.next())choices.add(new Choice(r.getLong(1),r.getString(2)+" | "+r.getString(3)+" | "+r.getString(4)+" (#"+r.getLong(1)+")"));}
         Choice initial=choices.get(0);if(original!=null&&original.clientId()!=null)for(var c:choices)if(c.id()==original.clientId())initial=c;
         var owner=(Choice)JOptionPane.showInputDialog(frame,"Linked client (optional)","Property client",JOptionPane.QUESTION_MESSAGE,null,choices.toArray(),initial);if(owner==null)return;
-        PropertyStore.save(db,new PropertyStore.Property(property.id(),owner.id()==0?null:owner.id(),property.address(),property.status(),property.notes()));refreshRecords();
+        PropertyStore.save(db,new PropertyStore.Property(property.id(),owner.id()==0?null:owner.id(),property.address(),property.status(),property.notes(),property.parts()));refreshRecords();
     });}
     void addCall() { safe(() -> { var c=chooseClient();if(c==null)return;var v=form("Log call","Follow-up date (YYYY-MM-DD, optional)","Call notes");if(v==null)return;if(!v[0].isBlank())LocalDate.parse(v[0]);execute("INSERT INTO calls(client_id,called,followup,notes) VALUES(?,?,?,?)",c.id,LocalDateTime.now().toString(),v[0],v[1]); }); }
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }

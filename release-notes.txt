@@ -1,13 +1,16 @@
-RealtorDesk 0.1.15
+RealtorDesk 0.1.16
 
 What's new
 
-- Linked properties in Add/Edit Client: attach an existing unassigned property, create a new one, edit its details, or detach it.
-- Create properties on the Properties tab without choosing a client. Edit or double-click a property later to assign, change, or remove its client.
-- Property addresses and client links stay in sync across Clients and Properties. A client may have multiple properties; each property has one optional linked client.
-- Existing seller addresses become linked property records during upgrade. Clients now show linked property addresses rather than a separate editable seller address.
-- Client and property changes made in the client editor save together. Cancel leaves the existing records unchanged. Detaching keeps the property as an unassigned record.
-- Key Dates and other existing client information are preserved.
+- Delete mistaken property records from the Properties tab. Confirmation names the property and warns if a client is attached. The client itself is kept.
+
+- Property addresses now have separate Street number, Direction, Street name, Street type, Unit/Apt, City, State and ZIP fields.
+- Street number, Street name, City, State and ZIP are required when creating or editing a property. Direction, Street type and Unit/Apt are optional.
+- Possible duplicate clients are flagged by matching name, email or phone, including common phone formatting differences.
+- Possible duplicate properties are flagged by address, including common direction/street-type abbreviations. Units distinguish apartments and condos.
+- Review matching records before choosing whether to save anyway. Existing records are not automatically merged or removed.
+- Existing full addresses are preserved. The editor prefills recognizable address parts and shows the original address for review; fill missing required details before saving an edited property.
+- Linked property details remain synchronized between Clients and Properties. Key Dates are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

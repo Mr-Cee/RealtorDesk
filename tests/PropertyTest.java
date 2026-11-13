@@ -12,7 +12,7 @@ final class PropertyTest {
             s.execute("CREATE TABLE properties(id INTEGER PRIMARY KEY,client_id INTEGER REFERENCES clients(id),address TEXT NOT NULL,status TEXT,notes TEXT)");ClientStore.migrate(db);
             ClientStore.save(db,null,"Jamie","Smith","555","","Active","",ClientStore.Type.SELLER,"123 Oak Street");
             ClientStore.save(db,null,"Alex","Smith","555","","Active","",ClientStore.Type.BUYER);
-            PropertyStore.save(db,new PropertyStore.Property(null,1L,"123 Oak Street","Listed","Keep notes"));
+            s.execute("INSERT INTO properties(client_id,address,status,notes) VALUES(1,'123 Oak Street','Listed','Keep notes')");
             PropertyStore.migrate(db);PropertyStore.migrate(db);check(PropertyStore.list(db,1L).size()==1);check(PropertyStore.list(db,1L).get(0).notes().equals("Keep notes"));
             PropertyStore.save(db,new PropertyStore.Property(null,null,"45 Pine Lane","Available","No client yet"));
             var unassigned=PropertyStore.list(db,null).get(0);check(unassigned.clientId()==null);
