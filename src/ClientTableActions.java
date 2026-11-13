@@ -3,6 +3,7 @@ import java.util.function.LongConsumer;
 import javax.swing.*;
 
 final class ClientTableActions {
+    static void hideId(JTable table){table.removeColumn(table.getColumnModel().getColumn(table.convertColumnIndexToView(0)));}
     /** Both edit entry points resolve the model ID, even after sorting, filtering or column reordering. */
     static Runnable install(JTable table,LongConsumer edit,Runnable refresh) {
         Runnable editSelected=() -> {

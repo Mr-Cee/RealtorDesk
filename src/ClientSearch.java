@@ -40,7 +40,7 @@ final class ClientSearch {
         search.getDocument().addDocumentListener(new DocumentListener(){public void insertUpdate(DocumentEvent e){filter.run();}public void removeUpdate(DocumentEvent e){filter.run();}public void changedUpdate(DocumentEvent e){filter.run();}});
         sorter.addRowSorterListener(e->updateCount.run());
         table.getModel().addTableModelListener(e->updateCount.run());
-        search.setToolTipText("Search names, seller address, phone, email, client type, status or notes. Use multiple words to narrow results.");
+        search.setToolTipText("Search names, seller address, phone, email, client type, communication date, status or notes. Use multiple words to narrow results.");
         updateCount.run();
     }
 }

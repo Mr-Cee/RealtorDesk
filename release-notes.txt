@@ -1,13 +1,14 @@
-RealtorDesk 0.1.11
+RealtorDesk 0.1.12
 
 What's new
 
-- Add a seller address when adding or editing a Seller or Buyer & Seller client.
-- View seller addresses directly on the Clients tab.
-- Instant client search now includes seller addresses. Search by street, city, ZIP, or combine names and address words to narrow the list.
-- Saved addresses are preserved when changing client types and after closing the app.
+- The Clients tab no longer displays the internal ID column. Linked records and client editing still use the IDs behind the scenes.
+- New Date Last Communicated column for tracking your most recent contact with each client.
+- Choose a date from a calendar in Add Client or Edit Client, with month/year navigation and a Today shortcut.
+- Leave the date blank or use Clear to remove it. Dates display as YYYY-MM-DD and sort chronologically.
+- Instant search includes communication dates alongside names, seller addresses and other client details.
 
-Existing clients start with a blank seller address. Your existing records and linked documents, properties and calls are preserved.
+Existing client records, seller address information, and linked documents, properties and calls are preserved. Existing communication dates start blank so you can enter the correct date.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

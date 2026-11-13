@@ -15,7 +15,7 @@ final class ClientAddressTest {
                 s.execute("PRAGMA user_version=3");
                 ClientStore.migrate(db);ClientStore.migrate(db);
                 var old=ClientStore.load(db,7);check(old.sellerAddress().isEmpty());check(old.firstName().equals("Mary Ann"));check(old.notes().equals("Keep notes"));
-                try(var r=s.executeQuery("PRAGMA user_version")){check(r.next()&&r.getInt(1)==4);}
+                try(var r=s.executeQuery("PRAGMA user_version")){check(r.next()&&r.getInt(1)==5);}
                 ClientStore.save(db,7L,"Mary Ann","Smith","555","mary@example.test","Active","Keep notes",ClientStore.Type.SELLER,"  123 Oak Street, Unit 4, Anchorage, AK 99501  ");
                 ClientStore.migrate(db);check(ClientStore.load(db,7).sellerAddress().equals("123 Oak Street, Unit 4, Anchorage, AK 99501"));
                 ClientStore.save(db,null,"Jamie","O'Brien","555","","Lead","",ClientStore.Type.BOTH,"45 Pine Lane, Juneau, AK 99801");

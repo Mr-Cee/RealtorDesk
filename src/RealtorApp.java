@@ -54,7 +54,7 @@ public class RealtorApp {
         frame.setIconImages(icons);
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
-        tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Seller address","Status","Notes"}, "SELECT id,first_name,last_name,phone,email,client_type,seller_address,status,notes FROM clients", () -> editClient(null)));
+        tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Seller address","Date Last Communicated","Status","Notes"}, "SELECT id,first_name,last_name,phone,email,client_type,seller_address,last_communicated,status,notes FROM clients", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Notes"}, "SELECT p.id,c.name,p.address,p.status,p.notes FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
         var documents=new DocumentsPanel(db,HOME.resolve("documents"));
@@ -125,6 +125,7 @@ public class RealtorApp {
         var create = new JButton("Add " + type); create.addActionListener(e -> { add.run(); refresh.run(); }); buttons.add(create);
         var reload = new JButton("Refresh"); reload.addActionListener(e -> refresh.run()); buttons.add(reload);
         if(type.equals("clients")) {
+            ClientTableActions.hideId(table);
             Runnable editSelected=ClientTableActions.install(table,this::editClient,refresh);
             var edit=new JButton("Edit selected");edit.addActionListener(e -> editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click a client to edit their details.");
@@ -142,8 +143,8 @@ public class RealtorApp {
     void editClient(Long id) { safe(() -> {
         String[] values={"","","","","Lead",""};
         ClientStore.Type selectedType=ClientStore.Type.UNSPECIFIED;
-        String previousName="",savedAddress="";
-        if(id!=null) {var client=ClientStore.load(db,id);values=new String[]{client.firstName(),client.lastName(),client.phone(),client.email(),client.status(),client.notes()};selectedType=client.type();previousName=client.name();savedAddress=client.sellerAddress();}
+        String previousName="",savedAddress="",savedDate="";
+        if(id!=null) {var client=ClientStore.load(db,id);values=new String[]{client.firstName(),client.lastName(),client.phone(),client.email(),client.status(),client.notes()};selectedType=client.type();previousName=client.name();savedAddress=client.sellerAddress();savedDate=client.lastCommunicated();}
         var clientType=new JComboBox<ClientStore.Type>(ClientStore.Type.values());clientType.setSelectedItem(selectedType);
         var fields=new JTextField[6]; var form=new JPanel(new GridLayout(0,2,8,8)); String[] labels={"First name","Last name","Phone","Email","Status","Notes"};
         for(int i=0;i<6;i++) {
@@ -156,11 +157,12 @@ public class RealtorApp {
         Runnable updateAddress=()->{boolean enabled=((ClientStore.Type)clientType.getSelectedItem()).isSeller();address.setEnabled(enabled);addressLabel.setEnabled(enabled);};
         clientType.addActionListener(e->updateAddress.run());updateAddress.run();
         form.add(addressLabel);form.add(address);
+        var communicated=new DatePicker(savedDate);form.add(new JLabel("Date Last Communicated"));form.add(communicated);
         if(id!=null&&(previousName.contains(",")||previousName.trim().split("(?U)\\s+").length>2)) {
             var original=new JTextField(previousName,30);original.setEditable(false);form.add(new JLabel("Full name on file"));form.add(original);
         }
         if(JOptionPane.showConfirmDialog(frame,form,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
-        ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),address.getText());
+        ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),address.getText(),communicated.date());
     }); }
     Choice chooseClient() throws Exception {
         var choices=new ArrayList<Choice>(); try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name FROM clients ORDER BY name")) { while(r.next()) choices.add(new Choice(r.getLong(1),r.getString(2))); }
