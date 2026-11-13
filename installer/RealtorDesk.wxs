@@ -1,0 +1,35 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="RealtorDesk" Manufacturer="RealtorDesk" Version="0.1.0"
+           UpgradeCode="41fd3758-60c3-471c-933b-0a12968038ec" Scope="perUser">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of RealtorDesk is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="RealtorDesk">
+          <Directory Id="RuntimeFolder" Name="runtime" />
+          <Directory Id="AppFolder" Name="app" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="MenuFolder" Name="RealtorDesk">
+        <Component Id="AppShortcuts" Guid="*">
+          <Shortcut Id="StartMenuShortcut" Name="RealtorDesk"
+                    Target="[RuntimeFolder]bin\javaw.exe" WorkingDirectory="INSTALLFOLDER"
+                    Arguments="--enable-native-access=ALL-UNNAMED -cp &quot;[AppFolder]*&quot; RealtorApp" />
+          <Shortcut Id="DesktopShortcut" Directory="DesktopFolder" Name="RealtorDesk"
+                    Target="[RuntimeFolder]bin\javaw.exe" WorkingDirectory="INSTALLFOLDER"
+                    Arguments="--enable-native-access=ALL-UNNAMED -cp &quot;[AppFolder]*&quot; RealtorApp" />
+          <RemoveFolder Id="RemoveMenuFolder" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\RealtorDesk" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+    <Feature Id="MainFeature" Title="RealtorDesk" Level="1">
+      <Files Directory="RuntimeFolder" Include="$(RuntimeSource)\**" />
+      <Files Directory="AppFolder" Include="$(AppSource)\*.jar" />
+      <ComponentRef Id="AppShortcuts" />
+    </Feature>
+  </Package>
+</Wix>
