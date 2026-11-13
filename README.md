@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.3).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.4).
 
 ## Run and package
 
@@ -12,7 +12,11 @@ From PowerShell with a JDK on PATH:
 ./build.ps1 -Test -Installer
 ```
 
-The build uses pinned JDBC, logging and JSON dependencies from the local Maven cache when available, otherwise downloading them from Maven Central. Installer creation uses jlink and WiX directly to build a per-user Windows MSI that includes the Java runtime and libraries. End users do not need Java, SQLite, or a database service installed separately. Output is in dist/. Keep the upgrade UUID fixed across versions.
+The build uses pinned JDBC, logging and JSON dependencies from the local Maven cache when available, otherwise downloading them from Maven Central. Installer creation uses jlink, jpackage and WiX to build a per-user Windows MSI that includes the native RealtorDesk.exe launcher, Java runtime and libraries. End users do not need Java, SQLite, or a database service installed separately. Output is in dist/. Keep the upgrade UUID fixed across versions.
+
+Version 0.1.4 introduces a native Windows launcher that hosts Java inside the RealtorDesk.exe process rather than spawning javaw.exe. Desktop and Start menu shortcuts, the taskbar/window icon, and the installed-program icon use the bundled house emblem. Update restarts use RealtorDesk.exe. When an older updater reopens javaw.exe after installing 0.1.4, the app switches to its native launcher before creating windows. The executable needs its adjacent app and runtime folders; it is not a standalone single-file distribution. The installer remains an MSI, which is also the format the in-app updater downloads.
+
+Native packaging tests temporarily run the actual generated EXE with a probe entry point to verify the process name, bundled JVM, icon and SQLite; the probe is removed and the production entry point restored before building the MSI. Local jpackage may be blocked by the Work session's Windows writable-directory checks; the GitHub Windows runner performs the complete native build and launcher verification.
 
 Version 0.1.1 adds a folder-selection screen with a Browse dialog. Choose a writable installation folder; setup remains per-user and does not request administrator rights. Both shortcuts resolve the chosen folder, and setup saves it for future upgrades. Client data remains under `%LOCALAPPDATA%/RealtorDesk`. To relocate an existing installation, uninstall it first and then install to the new folder; the uninstaller leaves client data in place.
 
