@@ -23,7 +23,7 @@ public class ReleaseNotesTest {
             try { ReleaseNotes.markSeen(file.resolve("invalid"), failed, "0.1.10"); throw new AssertionError(); }
             catch (java.io.IOException expected) { check(ReleaseNotes.shouldShow(failed, "0.1.10")); }
             String notes = ReleaseNotes.text();
-            check(notes.startsWith("RealtorDesk " + BuildInfo.VERSION + "\n"));
+            check(notes.lines().findFirst().orElse("").equals("RealtorDesk " + BuildInfo.VERSION));
             check(notes.contains("What's new"));
             check(notes.contains("First name"));
             check(notes.equals(Files.readString(Path.of("release-notes.txt"))));

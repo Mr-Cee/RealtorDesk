@@ -31,6 +31,7 @@ jobs:
       - name: Test and build self-contained installer
         shell: pwsh
         run: ./build.ps1 -Test -Installer
+      # release-notes.txt is also bundled in the app for offline viewing.
       - name: Publish installer and checksum
         shell: pwsh
         run: |
