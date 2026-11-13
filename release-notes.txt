@@ -1,18 +1,13 @@
-RealtorDesk 0.1.10
+RealtorDesk 0.1.11
 
 What's new
 
-- A What's New popup appears once when you first open each new version.
-- Reopen the current version's patch notes anytime from Help > What's New.
-- Notes are included with the app, so they are available without an internet connection.
+- Add a seller address when adding or editing a Seller or Buyer & Seller client.
+- View seller addresses directly on the Clients tab.
+- Instant client search now includes seller addresses. Search by street, city, ZIP, or combine names and address words to narrow the list.
+- Saved addresses are preserved when changing client types and after closing the app.
 
-Also included from 0.1.9
-
-- Separate First name and Last name fields on the Clients tab and in client editing.
-- Search clients as you type across names, phone numbers, email, client type, status and notes.
-- Search supports accented names and phone numbers without formatting; Clear resets the list.
-- The client count shows how many records match your search.
-
-Existing client records and linked documents, properties and calls are preserved. Existing names are initially split at the first space; review compound names in Edit selected if needed.
+Existing clients start with a blank seller address. Your existing records and linked documents, properties and calls are preserved.
 
 Updates: Help > Check for updates.
+View these notes anytime: Help > What's New.

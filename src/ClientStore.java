@@ -4,9 +4,10 @@ final class ClientStore {
     enum Type {
         UNSPECIFIED("Unspecified"),BUYER("Buyer"),SELLER("Seller"),BOTH("Buyer & Seller");
         final String label;Type(String label){this.label=label;}public String toString(){return label;}
+        boolean isSeller(){return this==SELLER||this==BOTH;}
         static Type from(String value){for(var type:values())if(type.label.equals(value))return type;return UNSPECIFIED;}
     }
-    record Client(long id,String name,String firstName,String lastName,String phone,String email,String status,String notes,Type type) { }
+    record Client(long id,String name,String firstName,String lastName,String phone,String email,String status,String notes,Type type,String sellerAddress) { }
     static String cleanName(String value){return value==null?"":value.replaceAll("(?U)^\\s+|\\s+$","");}
     static String[] splitLegacyName(String value) {
         String[] parts=cleanName(value).split("(?U)\\s+",2);
@@ -30,29 +31,34 @@ final class ClientStore {
                     }
                 }
             }
+            if(!columns.contains("seller_address"))s.execute("ALTER TABLE clients ADD COLUMN seller_address TEXT NOT NULL DEFAULT ''");
             int version;
             try(var row=s.executeQuery("PRAGMA user_version")){row.next();version=row.getInt(1);}
-            if(version<3)s.execute("PRAGMA user_version=3");
+            if(version<4)s.execute("PRAGMA user_version=4");
             db.commit();
         }catch(SQLException e){db.rollback();throw e;}finally{db.setAutoCommit(auto);}
     }
     static Client load(Connection db,long id) throws SQLException {
-        try(var p=db.prepareStatement("SELECT id,name,first_name,last_name,phone,email,status,notes,client_type FROM clients WHERE id=?")) {
+        try(var p=db.prepareStatement("SELECT id,name,first_name,last_name,phone,email,status,notes,client_type,seller_address FROM clients WHERE id=?")) {
             p.setLong(1,id);
             try(var row=p.executeQuery()) {
                 if(!row.next())throw new SQLException("This client no longer exists. Refresh the client list.");
-                return new Client(row.getLong(1),row.getString(2),row.getString(3),row.getString(4),row.getString(5),row.getString(6),row.getString(7),row.getString(8),Type.from(row.getString(9)));
+                return new Client(row.getLong(1),row.getString(2),row.getString(3),row.getString(4),row.getString(5),row.getString(6),row.getString(7),row.getString(8),Type.from(row.getString(9)),row.getString(10));
             }
         }
     }
     static void save(Connection db,Long id,String firstName,String lastName,String phone,String email,String status,String notes,Type type) throws SQLException {
+        save(db,id,firstName,lastName,phone,email,status,notes,type,id==null?"":load(db,id).sellerAddress());
+    }
+    static void save(Connection db,Long id,String firstName,String lastName,String phone,String email,String status,String notes,Type type,String sellerAddress) throws SQLException {
         String first=cleanName(firstName),last=cleanName(lastName),name=fullName(first,last);
         if(name.isBlank())throw new IllegalArgumentException("Enter a first or last name.");
         if(type==null)throw new IllegalArgumentException("Select a client type.");
-        String sql=id==null?"INSERT INTO clients(name,phone,email,status,notes,client_type,first_name,last_name) VALUES(?,?,?,?,?,?,?,?)":"UPDATE clients SET name=?,phone=?,email=?,status=?,notes=?,client_type=?,first_name=?,last_name=? WHERE id=?";
+        String sql=id==null?"INSERT INTO clients(name,phone,email,status,notes,client_type,first_name,last_name,seller_address) VALUES(?,?,?,?,?,?,?,?,?)":"UPDATE clients SET name=?,phone=?,email=?,status=?,notes=?,client_type=?,first_name=?,last_name=?,seller_address=? WHERE id=?";
         try(var p=db.prepareStatement(sql)) {
             p.setString(1,name);p.setString(2,phone);p.setString(3,email);p.setString(4,status);p.setString(5,notes);p.setString(6,type.label);p.setString(7,first);p.setString(8,last);
-            if(id!=null)p.setLong(9,id);
+            p.setString(9,sellerAddress==null?"":sellerAddress.trim());
+            if(id!=null)p.setLong(10,id);
             if(p.executeUpdate()!=1)throw new SQLException("This client no longer exists. Refresh the client list.");
         }
     }

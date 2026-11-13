@@ -25,7 +25,7 @@ public class ReleaseNotesTest {
             String notes = ReleaseNotes.text();
             check(notes.lines().findFirst().orElse("").equals("RealtorDesk " + BuildInfo.VERSION));
             check(notes.contains("What's new"));
-            check(notes.contains("First name"));
+            check(notes.contains("seller address"));
             check(notes.equals(Files.readString(Path.of("release-notes.txt"))));
             try (var files = Files.list(folder)) { check(files.count() == 1); }
         } finally { Files.deleteIfExists(file); Files.delete(folder); }

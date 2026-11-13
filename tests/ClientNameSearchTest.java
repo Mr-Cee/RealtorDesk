@@ -27,6 +27,7 @@ public class ClientNameSearchTest {
             try(var row=s.executeQuery("SELECT id FROM clients WHERE name='North Star LLC'")){check(row.next());var business=ClientStore.load(db,row.getLong(1));check(business.firstName().isEmpty());check(business.lastName().equals("North Star LLC"));}
         }
         SwingUtilities.invokeAndWait(ClientNameSearchTest::searchChecks);
+        checks+=ClientAddressTest.run();
         System.out.println("PASS: "+checks+" split-name migration and client-search checks");
     }
     static void searchChecks() {

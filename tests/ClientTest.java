@@ -24,9 +24,9 @@ public class ClientTest {
                 check(old.type()==ClientStore.Type.UNSPECIFIED);check(old.id()==7);check(old.name().equals("Existing client"));check(old.notes().equals("Keep these notes"));
                 check(old.phone().equals("555-0100"));check(old.status().equals("Lead"));
                 check(old.firstName().equals("Existing"));check(old.lastName().equals("client"));
-                try(var r=s.executeQuery("PRAGMA user_version")){check(r.next()&&r.getInt(1)==3);}
+                try(var r=s.executeQuery("PRAGMA user_version")){check(r.next()&&r.getInt(1)==4);}
                 ClientStore.migrate(db);
-                int columns=0;try(var r=s.executeQuery("PRAGMA table_info(clients)")){while(r.next())columns++;}check(columns==9);
+                int columns=0;try(var r=s.executeQuery("PRAGMA table_info(clients)")){while(r.next())columns++;}check(columns==10);
                 for(var type:ClientStore.Type.values()) {
                     ClientStore.save(db,7L,"Existing","client","555-0100","existing@example.test","Active","Keep these notes",type);
                     check(ClientStore.load(db,7).type()==type);
