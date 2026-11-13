@@ -1,53 +1,19 @@
-import java.sql.*;
-import java.util.Objects;
-import java.util.ArrayList;
 import java.awt.*;
+import java.sql.*;
 import javax.swing.*;
-import javax.swing.event.*;
 
-/** Client assignment is part of the property form, with IDs kept behind the labels. */
-final class PropertyClientField extends JComboBox<PropertyClientField.Choice> {
-    record Choice(Long id,String label,String searchText){public String toString(){return label;}}
-    final JTextField search=new JTextField(18);
-    final JLabel count=new JLabel();
-    final java.util.List<Choice> choices=new ArrayList<>();
+/** A pending assignment; the property editor commits it only when saved. */
+final class PropertyClientField extends JPanel {
+    final JTextField display=new JTextField(28);
+    final JButton action=new JButton();
+    final Connection db;
+    private ClientPicker.Client selected;
     PropertyClientField(Connection db,Long existing)throws SQLException {
-        var unassigned=new Choice(null,"Unassigned","");choices.add(unassigned);addItem(unassigned);Choice selected=null;
-        try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name,phone,email FROM clients ORDER BY name,id")) {
-            while(r.next()) {
-                String contact=Objects.toString(r.getString(3),"");if(contact.isBlank())contact=Objects.toString(r.getString(4),"");
-                var item=new Choice(r.getLong(1),r.getString(2)+(contact.isBlank()?"":" | "+contact)+" (#"+r.getLong(1)+")",r.getString(2)+" "+Objects.toString(r.getString(3),"")+" "+Objects.toString(r.getString(4),""));choices.add(item);addItem(item);
-                if(Objects.equals(existing,item.id()))selected=item;
-            }
-        }
-        if(existing!=null&&selected==null)throw new SQLException("The linked client no longer exists. Refresh the property list.");
-        if(selected!=null)setSelectedItem(selected);
-        setMaximumRowCount(12);
-        search.setToolTipText("Filter clients by name, phone or email, then choose a matching client below.");
-        search.getDocument().addDocumentListener(new DocumentListener(){public void insertUpdate(DocumentEvent e){filter();}public void removeUpdate(DocumentEvent e){filter();}public void changedUpdate(DocumentEvent e){filter();}});
-        filter();
-        setToolTipText("Keep the current client, choose another client, or leave Unassigned.");
+        super(new BorderLayout(6,0));this.db=db;display.setEditable(false);add(display);add(action,BorderLayout.EAST);
+        if(existing!=null){selected=ClientPicker.clients(db).stream().filter(c->c.id()==existing).findFirst().orElseThrow(()->new SQLException("The linked client no longer exists. Refresh the property list."));}
+        update();action.addActionListener(e->{if(selected!=null){assign(null);return;}try{var chosen=ClientPicker.show(this,db);if(chosen!=null)assign(chosen);}catch(SQLException problem){JOptionPane.showMessageDialog(this,problem.getMessage(),"Clients",JOptionPane.ERROR_MESSAGE);}});
     }
-    Long clientId(){return ((Choice)getSelectedItem()).id();}
-    JPanel searchPanel() {
-        var panel=new JPanel(new BorderLayout(4,0));var actions=new JPanel(new FlowLayout(FlowLayout.RIGHT,4,0));var clear=new JButton("Clear");
-        clear.addActionListener(e->{search.setText("");search.requestFocusInWindow();});actions.add(clear);actions.add(count);panel.add(search);panel.add(actions,BorderLayout.EAST);return panel;
-    }
-    void filter() {
-        Choice selected=(Choice)getSelectedItem();var model=new DefaultComboBoxModel<Choice>();model.addElement(choices.get(0));
-        String query=ClientSearch.normalize(search.getText()).trim();int matches=0;
-        for(var item:choices)if(item.id()!=null&&matches(item.searchText(),query)){model.addElement(item);matches++;}
-        // Filtering must never assign the first match or detach a client hidden by the query.
-        model.setSelectedItem(selected==null?choices.get(0):selected);setModel(model);
-        count.setText(matches+" of "+(choices.size()-1)+" clients"+(matches==0?". No matches.":""));
-    }
-    static boolean matches(String text,String query) {
-        String normalized=ClientSearch.normalize(text);
-        for(String word:query.split("\\s+")) {
-            if(normalized.contains(word))continue;
-            String digits=word.replaceAll("\\D","");
-            if(word.matches("[+()0-9.\\-]+")&&digits.length()>=3&&normalized.replaceAll("\\D","").contains(digits))continue;
-            return false;
-        }return true;
-    }
+    Long clientId(){return selected==null?null:selected.id();}
+    void assign(ClientPicker.Client client){selected=client;update();}
+    private void update(){display.setText(selected==null?"":selected.name()+(selected.phone().isBlank()?"":" | "+selected.phone()));display.setCaretPosition(0);action.setText(selected==null?"Add":"Remove");display.setToolTipText(selected==null?"No linked client":selected.name()+" | "+selected.phone()+" | "+selected.email());}
 }
