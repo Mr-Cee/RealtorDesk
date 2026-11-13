@@ -144,7 +144,8 @@ public class RealtorApp {
         String[] values={"","","","","Lead",""};
         ClientStore.Type selectedType=ClientStore.Type.UNSPECIFIED;
         String previousName="",savedAddress="",savedDate="";
-        if(id!=null) {var client=ClientStore.load(db,id);values=new String[]{client.firstName(),client.lastName(),client.phone(),client.email(),client.status(),client.notes()};selectedType=client.type();previousName=client.name();savedAddress=client.sellerAddress();savedDate=client.lastCommunicated();}
+        KeyDates savedKeyDates=KeyDates.EMPTY;
+        if(id!=null) {var client=ClientStore.load(db,id);values=new String[]{client.firstName(),client.lastName(),client.phone(),client.email(),client.status(),client.notes()};selectedType=client.type();previousName=client.name();savedAddress=client.sellerAddress();savedDate=client.lastCommunicated();savedKeyDates=client.keyDates();}
         var clientType=new JComboBox<ClientStore.Type>(ClientStore.Type.values());clientType.setSelectedItem(selectedType);
         var fields=new JTextField[6]; var form=new JPanel(new GridLayout(0,2,8,8)); String[] labels={"First name","Last name","Phone","Email","Status","Notes"};
         for(int i=0;i<6;i++) {
@@ -161,8 +162,11 @@ public class RealtorApp {
         if(id!=null&&(previousName.contains(",")||previousName.trim().split("(?U)\\s+").length>2)) {
             var original=new JTextField(previousName,30);original.setEditable(false);form.add(new JLabel("Full name on file"));form.add(original);
         }
-        if(JOptionPane.showConfirmDialog(frame,form,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
-        ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),address.getText(),communicated.date());
+        form.setBorder(BorderFactory.createTitledBorder("Client information"));
+        var keyDates=new KeyDatesPanel(savedKeyDates);
+        var editor=new JPanel();editor.setLayout(new BoxLayout(editor,BoxLayout.Y_AXIS));editor.add(form);editor.add(Box.createVerticalStrut(8));editor.add(keyDates);
+        if(JOptionPane.showConfirmDialog(frame,editor,"Client",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
+        ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),address.getText(),communicated.date(),keyDates.dates());
     }); }
     Choice chooseClient() throws Exception {
         var choices=new ArrayList<Choice>(); try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name FROM clients ORDER BY name")) { while(r.next()) choices.add(new Choice(r.getLong(1),r.getString(2))); }

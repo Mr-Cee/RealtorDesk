@@ -1,13 +1,13 @@
-RealtorDesk 0.1.13
+RealtorDesk 0.1.14
 
 What's new
 
-- Instant Search clients on the Documents tab filters by client name, phone or email.
-- Search documents inside a client's section by filename or added date.
-- Both searches support multiple words, ignore case and accents, and include Clear buttons and matching counts.
-- Returning to the client list keeps your client search. Opening a client starts with all of their documents; refreshing or adding a document keeps the current document search.
+- Added a Key Dates section below Client information in Add/Edit Client.
+- Track Start, Offer, and Close dates independently using the calendar chooser, Today, or Clear.
+- All milestones are optional and saved with the client for future timing reports.
+- Dates are stored as separate standard date fields. Unknown milestones remain empty and will not be treated as zero-duration transactions in averages.
 
-Search stays within the selected client's documents. Your existing files and linked records are preserved.
+Existing clients begin with blank Key Dates. Existing client information, communication dates, and linked records are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

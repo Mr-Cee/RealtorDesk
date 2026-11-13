@@ -7,7 +7,7 @@ final class ClientStore {
         boolean isSeller(){return this==SELLER||this==BOTH;}
         static Type from(String value){for(var type:values())if(type.label.equals(value))return type;return UNSPECIFIED;}
     }
-    record Client(long id,String name,String firstName,String lastName,String phone,String email,String status,String notes,Type type,String sellerAddress,String lastCommunicated) { }
+    record Client(long id,String name,String firstName,String lastName,String phone,String email,String status,String notes,Type type,String sellerAddress,String lastCommunicated,KeyDates keyDates) { }
     static String cleanName(String value){return value==null?"":value.replaceAll("(?U)^\\s+|\\s+$","");}
     static String[] splitLegacyName(String value) {
         String[] parts=cleanName(value).split("(?U)\\s+",2);
@@ -33,18 +33,19 @@ final class ClientStore {
             }
             if(!columns.contains("seller_address"))s.execute("ALTER TABLE clients ADD COLUMN seller_address TEXT NOT NULL DEFAULT ''");
             if(!columns.contains("last_communicated"))s.execute("ALTER TABLE clients ADD COLUMN last_communicated TEXT NOT NULL DEFAULT ''");
+            for(String column:new String[]{"date_start","date_offer","date_close"})if(!columns.contains(column))s.execute("ALTER TABLE clients ADD COLUMN "+column+" TEXT");
             int version;
             try(var row=s.executeQuery("PRAGMA user_version")){row.next();version=row.getInt(1);}
-            if(version<5)s.execute("PRAGMA user_version=5");
+            if(version<6)s.execute("PRAGMA user_version=6");
             db.commit();
         }catch(SQLException e){db.rollback();throw e;}finally{db.setAutoCommit(auto);}
     }
     static Client load(Connection db,long id) throws SQLException {
-        try(var p=db.prepareStatement("SELECT id,name,first_name,last_name,phone,email,status,notes,client_type,seller_address,last_communicated FROM clients WHERE id=?")) {
+        try(var p=db.prepareStatement("SELECT id,name,first_name,last_name,phone,email,status,notes,client_type,seller_address,last_communicated,date_start,date_offer,date_close FROM clients WHERE id=?")) {
             p.setLong(1,id);
             try(var row=p.executeQuery()) {
                 if(!row.next())throw new SQLException("This client no longer exists. Refresh the client list.");
-                return new Client(row.getLong(1),row.getString(2),row.getString(3),row.getString(4),row.getString(5),row.getString(6),row.getString(7),row.getString(8),Type.from(row.getString(9)),row.getString(10),row.getString(11));
+                return new Client(row.getLong(1),row.getString(2),row.getString(3),row.getString(4),row.getString(5),row.getString(6),row.getString(7),row.getString(8),Type.from(row.getString(9)),row.getString(10),row.getString(11),new KeyDates(row.getString(12),row.getString(13),row.getString(14)));
             }
         }
     }
@@ -55,17 +56,23 @@ final class ClientStore {
         save(db,id,firstName,lastName,phone,email,status,notes,type,sellerAddress,id==null?"":load(db,id).lastCommunicated());
     }
     static void save(Connection db,Long id,String firstName,String lastName,String phone,String email,String status,String notes,Type type,String sellerAddress,String lastCommunicated) throws SQLException {
+        save(db,id,firstName,lastName,phone,email,status,notes,type,sellerAddress,lastCommunicated,id==null?KeyDates.EMPTY:load(db,id).keyDates());
+    }
+    static void save(Connection db,Long id,String firstName,String lastName,String phone,String email,String status,String notes,Type type,String sellerAddress,String lastCommunicated,KeyDates keyDates) throws SQLException {
         String first=cleanName(firstName),last=cleanName(lastName),name=fullName(first,last);
         if(name.isBlank())throw new IllegalArgumentException("Enter a first or last name.");
         if(type==null)throw new IllegalArgumentException("Select a client type.");
         String date=lastCommunicated==null?"":lastCommunicated.trim();
         if(!date.isEmpty())date=java.time.LocalDate.parse(date).toString();
-        String sql=id==null?"INSERT INTO clients(name,phone,email,status,notes,client_type,first_name,last_name,seller_address,last_communicated) VALUES(?,?,?,?,?,?,?,?,?,?)":"UPDATE clients SET name=?,phone=?,email=?,status=?,notes=?,client_type=?,first_name=?,last_name=?,seller_address=?,last_communicated=? WHERE id=?";
+        java.util.Objects.requireNonNull(keyDates,"Key dates");
+        String sql=id==null?"INSERT INTO clients(name,phone,email,status,notes,client_type,first_name,last_name,seller_address,last_communicated,date_start,date_offer,date_close) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)":"UPDATE clients SET name=?,phone=?,email=?,status=?,notes=?,client_type=?,first_name=?,last_name=?,seller_address=?,last_communicated=?,date_start=?,date_offer=?,date_close=? WHERE id=?";
         try(var p=db.prepareStatement(sql)) {
             p.setString(1,name);p.setString(2,phone);p.setString(3,email);p.setString(4,status);p.setString(5,notes);p.setString(6,type.label);p.setString(7,first);p.setString(8,last);
             p.setString(9,sellerAddress==null?"":sellerAddress.trim());
             p.setString(10,date);
-            if(id!=null)p.setLong(11,id);
+            String[] dates={keyDates.start(),keyDates.offer(),keyDates.close()};
+            for(int i=0;i<dates.length;i++)if(dates[i].isEmpty())p.setNull(11+i,Types.VARCHAR);else p.setString(11+i,dates[i]);
+            if(id!=null)p.setLong(14,id);
             if(p.executeUpdate()!=1)throw new SQLException("This client no longer exists. Refresh the client list.");
         }
     }

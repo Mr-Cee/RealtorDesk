@@ -29,6 +29,7 @@ public class ClientNameSearchTest {
         SwingUtilities.invokeAndWait(ClientNameSearchTest::searchChecks);
         checks+=ClientAddressTest.run();
         checks+=ClientDateTest.run();
+        checks+=KeyDatesTest.run();
         System.out.println("PASS: "+checks+" split-name migration and client-search checks");
     }
     static void searchChecks() {

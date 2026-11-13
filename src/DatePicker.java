@@ -8,10 +8,15 @@ import javax.swing.*;
 final class DatePicker extends JPanel {
     private LocalDate value;
     private final JTextField display=new JTextField(12);
+    private final String title;
     DatePicker(String initial) {
+        this(initial,"Date Last Communicated");
+    }
+    DatePicker(String initial,String title) {
         super(new FlowLayout(FlowLayout.LEFT,4,0));
+        this.title=title;
         value=initial==null||initial.isBlank()?null:LocalDate.parse(initial);
-        display.setEditable(false);display.setToolTipText("Choose the date you last communicated with this client.");
+        display.setEditable(false);display.setToolTipText("Choose "+title+". Leave blank if unknown.");
         var choose=new JButton("Choose date...");choose.addActionListener(e->choose());
         var clear=new JButton("Clear");clear.addActionListener(e->setDate(null));
         add(display);add(choose);add(clear);setDate(value);
@@ -20,7 +25,7 @@ final class DatePicker extends JPanel {
     void setDate(LocalDate date){value=date;display.setText(date());}
     private void choose() {
         var calendar=new CalendarPanel(value);
-        if(JOptionPane.showConfirmDialog(this,calendar,"Date Last Communicated",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE)==JOptionPane.OK_OPTION)
+        if(JOptionPane.showConfirmDialog(this,calendar,title,JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE)==JOptionPane.OK_OPTION)
             setDate(calendar.selected);
     }
     static final class CalendarPanel extends JPanel {
