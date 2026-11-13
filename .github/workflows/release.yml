@@ -18,8 +18,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -39,13 +39,17 @@ jobs:
           $existing = gh release view $tag --json isDraft 2>$null
           if ($LASTEXITCODE -eq 0) {
             if (!(($existing | ConvertFrom-Json).isDraft)) { throw "Release $tag already exists. Increment VERSION for each update." }
+            gh release edit $tag --target $env:GITHUB_SHA
+            if ($LASTEXITCODE -ne 0) { throw 'Draft release target update failed' }
           } else {
             gh release create $tag --target $env:GITHUB_SHA --title "RealtorDesk $version" --draft --notes "Windows x64 installer with bundled Java and SQLite. Download the MSI for first-time installation. Installed versions 0.1.2 and later can download, verify, install and restart through Check for updates. Client data stays in your Windows user profile. This installer is unsigned."
             if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed' }
           }
           gh release upload $tag "dist/RealtorDesk-$version.msi" "dist/RealtorDesk-$version.msi.sha256" --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
-          $assets = gh api "repos/$env:GH_REPO/releases/tags/$tag" | ConvertFrom-Json
+          $releaseId = gh release view $tag --json databaseId --jq .databaseId
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release lookup failed' }
+          $assets = gh api "repos/$env:GH_REPO/releases/$releaseId" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Release verification failed' }
           $asset = @($assets.assets | Where-Object name -eq "RealtorDesk-$version.msi")
           if ($asset.Count -ne 1 -or $asset[0].digest -notmatch '^sha256:[a-fA-F0-9]{64}$') { throw 'GitHub installer hash missing; draft was not published' }
@@ -53,3 +57,9 @@ jobs:
           if ($asset[0].digest -ne $expected) { throw 'Uploaded installer hash does not match' }
           gh release edit $tag --draft=false --latest
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
+      - name: Verify public in-app discovery and download
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          ./build/runtime-tls/bin/java.exe --enable-native-access=ALL-UNNAMED -cp 'build/lib/*;build/classes;build/testclasses' ReleaseDownloadCheck $env:GH_REPO $version
+          if ($LASTEXITCODE -ne 0) { throw 'Public updater integration check failed' }
