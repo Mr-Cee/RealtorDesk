@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.8).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.9).
 
 ## Run and package
 
@@ -33,6 +33,10 @@ dotnet tool install wix --version 5.0.2 --tool-path ./build/wix5
 The build prefers this project-local WiX installation. WiX 7 requires explicit acceptance of its maintenance-fee EULA; this project does not accept it automatically. The Windows x64 MSI builds successfully with WiX 5.0.2. Its contents were inspected for the application, dependencies and bundled runtime, and SQLite insert/read and version-comparison checks pass with that runtime. Installation, shortcuts, upgrades and full UI behavior still need end-to-end testing on Windows.
 
 ## Current features
+
+Version 0.1.9 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
+
+The transactional schema migration adds first_name and last_name, initially splitting the first word from the remaining name text. The existing full-name column is left unchanged during migration, and all IDs, types, notes and linked records remain intact. Multiword/compound names can be corrected in Edit; the existing full name is shown for comparison when applicable. Either name field can be blank, but at least one is required, allowing single names and business clients. Saving recomputes the combined display name used by Properties, Calls, Documents and client pickers. Repeat migrations preserve corrected split names.
 
 Version 0.1.8 groups Documents by client. The tab opens with client names, contact details and document counts, including clients with no attachments. Click a client, or select one and press Enter/Open client documents, to open that client's document section. Back to clients returns to the overview. Add document links the chosen file to the open client automatically; Open document or double-click opens an attachment. Navigation and opening use client/document IDs, so identically named clients remain separate. Returning to the Documents tab refreshes the visible list, including client-name changes. Existing attachment rows, paths and copied files are preserved; no database or file migration is required.
 
