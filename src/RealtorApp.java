@@ -10,11 +10,13 @@ import java.util.*;
 import com.google.gson.*;
 
 public class RealtorApp {
-    static final String VERSION = "0.1.1";
+    static final String VERSION = BuildInfo.VERSION;
     static final Path HOME = Path.of(System.getenv().getOrDefault("LOCALAPPDATA", System.getProperty("user.home")), "RealtorDesk");
     final JFrame frame = new JFrame("RealtorDesk • " + VERSION);
     final Properties settings = new Properties();
     Connection db;
+    final JButton updateButton = new JButton("Check for updates");
+    boolean updateBusy;
     record Choice(long id, String name) { public String toString() { return name; } }
 
     public static void main(String[] args) {
@@ -43,7 +45,10 @@ public class RealtorApp {
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());
         top.add(new JLabel("RealtorDesk — Clients, homes and conversations"), BorderLayout.WEST);
-        var update = new JButton("Settings / Check for updates"); update.addActionListener(e -> configureUpdates()); top.add(update, BorderLayout.EAST);
+        var actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        updateButton.addActionListener(e -> checkUpdates(true)); actions.add(updateButton);
+        var settingsButton = new JButton("Settings"); settingsButton.addActionListener(e -> configureUpdates()); actions.add(settingsButton);
+        top.add(actions, BorderLayout.EAST);
         root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + HOME), BorderLayout.SOUTH);
         frame.setContentPane(root); frame.setSize(1150,700); frame.setLocationRelativeTo(null); frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); frame.setVisible(true);
         if (!settings.getProperty("repository", "").isBlank()) checkUpdates(false);
@@ -89,25 +94,60 @@ public class RealtorApp {
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }
     void configureUpdates() { safe(() -> { String repo=JOptionPane.showInputDialog(frame,"Public GitHub repository (owner/repository)",settings.getProperty("repository",""));if(repo==null)return;repo=repo.trim();if(!repo.isEmpty()&&!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"))throw new Exception("Use owner/repository format.");settings.setProperty("repository",repo);try(var out=Files.newOutputStream(HOME.resolve("settings.properties"))) {settings.store(out,"RealtorDesk");}if(!repo.isEmpty())checkUpdates(true); }); }
     static boolean newer(String tag) {
-        String normalized=tag.startsWith("v")?tag.substring(1):tag;
-        if(!normalized.matches("\\d+\\.\\d+\\.\\d+")) return false;
-        var remote=normalized.split("\\."); var local=VERSION.split("\\.");
-        for(int i=0;i<3;i++) { int comparison=new java.math.BigInteger(remote[i]).compareTo(new java.math.BigInteger(local[i]));if(comparison!=0)return comparison>0; }return false;
+        try { return Updater.compareVersions(tag, VERSION)>0; } catch(IllegalArgumentException e) { return false; }
     }
     void checkUpdates(boolean manual) {
-        String repo=settings.getProperty("repository");
-        new SwingWorker<JsonObject,Void>() {
-            protected JsonObject doInBackground() throws Exception {
-                try(var client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()) {
-                    var request=HttpRequest.newBuilder(URI.create("https://api.github.com/repos/"+repo+"/releases/latest")).timeout(Duration.ofSeconds(20)).header("Accept","application/vnd.github+json").header("User-Agent","RealtorDesk/"+VERSION).build();
-                    var response=client.send(request,HttpResponse.BodyHandlers.ofString());
-                    if(response.statusCode()==404)throw new Exception("Repository or published release not found.");
-                    if(response.statusCode()!=200)throw new Exception("GitHub returned HTTP "+response.statusCode());
-                    return JsonParser.parseString(response.body()).getAsJsonObject();
-                }
+        if(updateBusy) return;
+        updateBusy=true; updateButton.setEnabled(false); updateButton.setText("Checking...");
+        String repo=settings.getProperty("repository", "Mr-Cee/RealtorDesk");
+        new SwingWorker<Optional<Updater.Update>,Void>() {
+            protected Optional<Updater.Update> doInBackground() throws Exception {
+                try(var client=Updater.client()) { return Updater.latest(client,repo,VERSION); }
             }
-            protected void done() { try { var release=get();String tag=release.get("tag_name").getAsString();if(newer(tag)) {if(JOptionPane.showConfirmDialog(frame,"Version "+tag+" is available. Open the download page?","Update available",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION)Desktop.getDesktop().browse(URI.create("https://github.com/"+repo+"/releases/latest"));}else if(manual)JOptionPane.showMessageDialog(frame,"You are up to date ("+VERSION+")."); } catch(Exception e) { if(manual)JOptionPane.showMessageDialog(frame,"Update check failed: "+e.getMessage()); } }
+            protected void done() {
+                finishUpdate();
+                try {
+                    var result=get();
+                    if(result.isEmpty()) { if(manual)JOptionPane.showMessageDialog(frame,"You are up to date ("+VERSION+").");return; }
+                    var update=result.get();
+                    if(JOptionPane.showConfirmDialog(frame,"Version "+update.version()+" is available (installed: "+VERSION+").\nDownload the update?","Update available",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION) downloadUpdate(update);
+                } catch(Exception e) { if(manual) updateError(e); }
+            }
         }.execute();
+    }
+    void finishUpdate() { updateBusy=false;updateButton.setEnabled(true);updateButton.setText("Check for updates"); }
+    void updateError(Exception error) {
+        Throwable cause=error;while(cause.getCause()!=null)cause=cause.getCause();
+        JOptionPane.showMessageDialog(frame,cause.getMessage(),"Update could not complete",JOptionPane.ERROR_MESSAGE);
+    }
+    void downloadUpdate(Updater.Update update) {
+        final Path installFolder;
+        try { installFolder=Updater.installationFolder(); } catch(Exception e) { updateError(e);return; }
+        updateBusy=true;updateButton.setEnabled(false);updateButton.setText("Downloading...");
+        var dialog=new JDialog(frame,"Downloading RealtorDesk "+update.version(),true);
+        var bar=new JProgressBar(0,100);bar.setStringPainted(true);
+        var panel=new JPanel(new BorderLayout(10,10));panel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
+        panel.add(new JLabel("Downloading and verifying update. Please wait..."),BorderLayout.NORTH);panel.add(bar);
+        dialog.setContentPane(panel);dialog.setSize(430,135);dialog.setLocationRelativeTo(frame);dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        var worker=new SwingWorker<Path,Void>() {
+            protected Path doInBackground() throws Exception {
+                try(var client=Updater.client()) { return Updater.download(client,update,Path.of(System.getProperty("java.io.tmpdir")),this::setProgress); }
+            }
+            protected void done() {
+                dialog.dispose();finishUpdate();
+                try {
+                    Path installer=get();
+                    if(JOptionPane.showConfirmDialog(frame,"Download verified. Install version "+update.version()+" now?\nRealtorDesk will close, update in its current folder, and reopen.\nYour client records and attachments will be kept.","Install and restart",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) {Files.deleteIfExists(installer);Files.deleteIfExists(installer.getParent());return;}
+                    var helper=Updater.launchInstaller(installer,installFolder);
+                    if(helper.waitFor(800,java.util.concurrent.TimeUnit.MILLISECONDS)) throw new Exception("The update helper could not start. Your current version is still open.");
+                    try { db.close(); } catch(Exception e) { helper.destroy();throw e; }
+                    frame.dispose();System.exit(0);
+                } catch(Exception e) { updateError(e); }
+            }
+        };
+        worker.addPropertyChangeListener(e -> {if("progress".equals(e.getPropertyName()))bar.setValue((Integer)e.getNewValue());});
+        worker.execute();
+        dialog.setVisible(true);
     }
     interface Work { void run() throws Exception; }
     void safe(Work work) { try { work.run(); } catch(Exception e) { JOptionPane.showMessageDialog(frame,e.getMessage(),"Unable to complete action",JOptionPane.ERROR_MESSAGE); } }
