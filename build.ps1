@@ -30,7 +30,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Compilation failed' }
 if ($LASTEXITCODE -ne 0) { throw 'JAR creation failed' }
 if ($Test) {
  New-Item -ItemType Directory -Force build/testclasses | Out-Null
- & javac -encoding UTF-8 --release 21 -cp 'build/lib/*;build/classes' -d build/testclasses tests/UpdaterTest.java
+ $testSources = @(Get-ChildItem tests -Filter '*.java' -File | ForEach-Object FullName)
+ & javac -encoding UTF-8 --release 21 -cp 'build/lib/*;build/classes' -d build/testclasses @testSources
  if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed' }
  & java --enable-native-access=ALL-UNNAMED -cp 'build/lib/*;build/classes;build/testclasses' UpdaterTest
  if ($LASTEXITCODE -ne 0) { throw 'Updater tests failed' }
@@ -38,11 +39,16 @@ if ($Test) {
 if ($Installer) {
  $wixCommand = if (Test-Path build/wix5/wix.exe) { Join-Path $PSScriptRoot 'build/wix5/wix.exe' } else { 'wix' }
  if (!(Get-Command $wixCommand -ErrorAction SilentlyContinue)) { throw 'WiX is required. See README.md for setup.' }
- if (!(Test-Path build/runtime/bin/javaw.exe)) {
-  & jlink --add-modules java.desktop,java.sql,java.net.http,jdk.unsupported --strip-debug --no-header-files --no-man-pages --output build/runtime
+ $runtimePath = Join-Path $PSScriptRoot 'build/runtime-tls'
+ if (!(Test-Path "$runtimePath/bin/javaw.exe")) {
+  & jlink --add-modules java.desktop,java.sql,java.net.http,jdk.unsupported,jdk.crypto.ec --strip-debug --no-header-files --no-man-pages --output $runtimePath
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime creation failed' }
  }
- & $wixCommand build installer/RealtorDesk.wxs installer/InstallUI.wxs -arch x64 -d "AppVersion=$appVersion" -d "RuntimeSource=$PSScriptRoot\build\runtime" -d "AppSource=$PSScriptRoot\build\lib" -o "dist/RealtorDesk-$appVersion.msi"
+ if ($Test) {
+  & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED -cp 'build/lib/*;build/classes;build/testclasses' UpdaterTest
+  if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime checks failed' }
+ }
+ & $wixCommand build installer/RealtorDesk.wxs installer/InstallUI.wxs -arch x64 -d "AppVersion=$appVersion" -d "RuntimeSource=$runtimePath" -d "AppSource=$PSScriptRoot\build\lib" -o "dist/RealtorDesk-$appVersion.msi"
  if ($LASTEXITCODE -ne 0) { throw 'Windows MSI installer creation failed' }
  $installerName = "RealtorDesk-$appVersion.msi"
  $hash = (Get-FileHash -LiteralPath "dist/$installerName" -Algorithm SHA256).Hash.ToLowerInvariant()
