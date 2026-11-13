@@ -1,8 +1,12 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="RealtorDesk" Manufacturer="RealtorDesk" Version="0.1.0"
+  <Package Name="RealtorDesk" Manufacturer="RealtorDesk" Version="0.1.1"
            UpgradeCode="41fd3758-60c3-471c-933b-0a12968038ec" Scope="perUser">
     <MajorUpgrade DowngradeErrorMessage="A newer version of RealtorDesk is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <UIRef Id="RealtorDeskUI" />
+    <Property Id="INSTALLFOLDER" Secure="yes">
+      <RegistrySearch Id="PreviousInstallFolder" Root="HKCU" Key="Software\RealtorDesk" Name="InstallFolder" Type="raw" />
+    </Property>
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="ProgramsFolder" Name="Programs">
         <Directory Id="INSTALLFOLDER" Name="RealtorDesk">
@@ -22,6 +26,7 @@
                     Arguments="--enable-native-access=ALL-UNNAMED -cp &quot;[AppFolder]*&quot; RealtorApp" />
           <RemoveFolder Id="RemoveMenuFolder" On="uninstall" />
           <RegistryValue Root="HKCU" Key="Software\RealtorDesk" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+          <RegistryValue Root="HKCU" Key="Software\RealtorDesk" Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" />
         </Component>
       </Directory>
     </StandardDirectory>
