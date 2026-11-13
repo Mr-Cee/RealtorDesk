@@ -5,6 +5,8 @@ import java.net.http.*;
 import java.nio.file.*;
 import java.security.*;
 import java.time.Duration;
+import java.time.Instant;
+import java.nio.file.attribute.FileTime;
 import java.util.*;
 import java.util.concurrent.*;
 import javax.net.ssl.*;
@@ -73,12 +75,52 @@ public class UpdaterTest {
                 String result=new String(parser.getInputStream().readAllBytes());check(parser.waitFor()==0);if(!result.isBlank())System.out.println(result);
             }
             Files.delete(root.resolve("handoff.ps1"));
+            cacheChecks(root.resolve("cache-tests"),bytes,update);
         } finally { Files.delete(root); }
         try(var db=java.sql.DriverManager.getConnection("jdbc:sqlite::memory:");var s=db.createStatement()) {
             s.execute("CREATE TABLE clients(id INTEGER PRIMARY KEY,name TEXT)");s.execute("INSERT INTO clients(name) VALUES('Test')");
             try(var r=s.executeQuery("SELECT name FROM clients")){check(r.next()&&r.getString(1).equals("Test"));}
         }
         System.out.println("PASS: "+passed+" updater, installer-handoff and SQLite checks");
+    }
+    static void cacheChecks(Path temp,byte[] bytes,Updater.Update update) throws Exception {
+        Files.createDirectories(temp);
+        Path unrelated=temp.resolve("unrelated.txt");Files.writeString(unrelated,"keep");
+        Path outside=Files.createDirectory(temp.resolve("outside-cache"));Files.writeString(outside.resolve("keep.txt"),"keep");
+        rejects(()->UpdateCache.removeTree(UpdateCache.root(temp),outside));check(Files.exists(outside.resolve("keep.txt")));
+        Instant now=Instant.now();Path file;
+        try(var client=new FakeClient(bytes,200,null)) {
+            file=UpdateCache.prepare(client,update,temp,p->{});check(client.requests==1);check(UpdateCache.verified(file,update));
+        }
+        try(var offline=new FakeClient(new byte[0],500,null)) {
+            check(UpdateCache.prepare(offline,update,temp,p->{}).equals(file));check(offline.requests==0);
+        }
+        // Choosing Not now performs no deletion; pending installers survive restarts and age-based cleanup.
+        UpdateCache.cleanup(temp,"1.1.0",now.plusSeconds(40*86400));check(Files.exists(file));
+        check(UpdateCache.find(update,temp).orElseThrow().equals(file));
+        Path log=file.resolveSibling(update.name()+".log");Files.writeString(log,"old failure");Files.setLastModifiedTime(log,FileTime.from(now.minusSeconds(8*86400)));
+        UpdateCache.cleanup(temp,"1.1.0",now);check(!Files.exists(log));check(Files.exists(file));
+        // Rehash cached bytes before reuse and redownload if the file was damaged.
+        Files.writeString(file,"damaged");check(UpdateCache.find(update,temp).isEmpty());
+        try(var client=new FakeClient(bytes,200,null)) {file=UpdateCache.prepare(client,update,temp,p->{});check(client.requests==1);}
+        var otherSource=new Updater.Update(update.version(),update.name(),URI.create(update.url().toString().replace("Mr-Cee/RealtorDesk","another/repository")),update.size(),update.sha256());
+        check(UpdateCache.find(otherSource,temp).isEmpty());
+        // An active installer keeps its files even if a new app process has already started.
+        Path active=file.resolveSibling("installing.pid");Files.writeString(active,Long.toString(ProcessHandle.current().pid()));
+        UpdateCache.cleanup(temp,"1.2.0",now);check(Files.exists(file));Files.delete(active);
+        UpdateCache.cleanup(temp,"1.2.0",now);check(!Files.exists(file));check(!Files.exists(file.getParent()));check(Files.readString(unrelated).equals("keep"));
+        // Old interrupted cache entries can be removed; completed pending installers cannot expire.
+        Path orphan=UpdateCache.root(temp).resolve("v9.0.0-0000000000000000");Files.createDirectories(orphan);Files.writeString(orphan.resolve("partial.part"),"partial");
+        Files.setLastModifiedTime(orphan,FileTime.from(now.minusSeconds(8*86400)));
+        UpdateCache.cleanup(temp,"1.2.0",now);check(!Files.exists(orphan));
+        // Adopt a verified pre-cache download without fetching the installer again.
+        Path legacy=Files.createDirectory(temp.resolve("RealtorDesk-update-legacy"));Files.write(legacy.resolve(update.name()),bytes);
+        try(var client=new FakeClient(new byte[0],500,null)){file=UpdateCache.prepare(client,update,temp,p->{});check(client.requests==0);check(UpdateCache.verified(file,update));}
+        UpdateCache.cleanup(temp,"1.1.0",now);check(Files.exists(legacy.resolve(update.name())));check(Files.exists(file));
+        Path unknown=Files.createDirectory(temp.resolve("RealtorDesk-update-unrelated"));Files.writeString(unknown.resolve("important.txt"),"keep");
+        UpdateCache.cleanup(temp,"1.2.0",now);check(!Files.exists(legacy));check(!Files.exists(file));check(Files.exists(unknown.resolve("important.txt")));
+        Files.delete(unknown.resolve("important.txt"));Files.delete(unknown);Files.delete(unrelated);Files.delete(outside.resolve("keep.txt"));Files.delete(outside);
+        Files.delete(UpdateCache.root(temp));Files.delete(temp);
     }
     static class FakeClient extends HttpClient {
         final byte[] bytes;final int status;final String location;int requests;
