@@ -17,6 +17,7 @@ public class RealtorApp {
     Connection db;
     final JMenuItem updateMenuItem = new JMenuItem("Check for updates");
     boolean updateBusy;
+    record AvailableUpdate(Updater.Update update,Path cachedInstaller) { }
     record Choice(long id, String name) { public String toString() { return name; } }
 
     public static void main(String[] args) {
@@ -36,6 +37,7 @@ public class RealtorApp {
         Files.createDirectories(HOME.resolve("documents"));
         settings.setProperty("repository", "Mr-Cee/RealtorDesk");
         if (Files.exists(HOME.resolve("settings.properties"))) try (var in = Files.newInputStream(HOME.resolve("settings.properties"))) { settings.load(in); }
+        java.util.concurrent.CompletableFuture.runAsync(() -> cleanupInstalledUpdates(Path.of(System.getProperty("java.io.tmpdir"))));
         db = DriverManager.getConnection("jdbc:sqlite:" + HOME.resolve("realtor.db"));
         try (var s = db.createStatement()) {
             s.execute("PRAGMA foreign_keys=ON");
@@ -149,20 +151,29 @@ public class RealtorApp {
         if(updateBusy) return;
         updateBusy=true; updateMenuItem.setEnabled(false); updateMenuItem.setText("Checking...");
         String repo=settings.getProperty("repository", "Mr-Cee/RealtorDesk");
-        new SwingWorker<Optional<Updater.Update>,Void>() {
-            protected Optional<Updater.Update> doInBackground() throws Exception {
-                try(var client=Updater.client()) { return Updater.latest(client,repo,VERSION); }
+        new SwingWorker<Optional<AvailableUpdate>,Void>() {
+            protected Optional<AvailableUpdate> doInBackground() throws Exception {
+                Path temp=Path.of(System.getProperty("java.io.tmpdir"));cleanupInstalledUpdates(temp);
+                try(var client=Updater.client()) {
+                    var latest=Updater.latest(client,repo,VERSION);
+                    if(latest.isEmpty())return Optional.empty();
+                    var update=latest.get();return Optional.of(new AvailableUpdate(update,UpdateCache.find(update,temp).orElse(null)));
+                }
             }
             protected void done() {
                 finishUpdate();
                 try {
                     var result=get();
                     if(result.isEmpty()) { if(manual)JOptionPane.showMessageDialog(frame,"You are up to date ("+VERSION+").");return; }
-                    var update=result.get();
+                    var available=result.get();var update=available.update();
+                    if(available.cachedInstaller()!=null) {installUpdate(update,available.cachedInstaller());return;}
                     if(JOptionPane.showConfirmDialog(frame,"Version "+update.version()+" is available (installed: "+VERSION+").\nDownload the update?","Update available",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION) downloadUpdate(update);
                 } catch(Exception e) { if(manual) updateError(e); }
             }
         }.execute();
+    }
+    void cleanupInstalledUpdates(Path temp) {
+        try {Updater.installationFolder();UpdateCache.cleanupQuietly(temp,VERSION);}catch(Exception ignored) { }
     }
     void finishUpdate() { updateBusy=false;updateMenuItem.setEnabled(true);updateMenuItem.setText("Check for updates"); }
     void updateError(Exception error) {
@@ -180,23 +191,29 @@ public class RealtorApp {
         dialog.setContentPane(panel);dialog.setSize(430,135);dialog.setLocationRelativeTo(frame);dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         var worker=new SwingWorker<Path,Void>() {
             protected Path doInBackground() throws Exception {
-                try(var client=Updater.client()) { return Updater.download(client,update,Path.of(System.getProperty("java.io.tmpdir")),this::setProgress); }
+                try(var client=Updater.client()) { return UpdateCache.prepare(client,update,Path.of(System.getProperty("java.io.tmpdir")),this::setProgress); }
             }
             protected void done() {
                 dialog.dispose();finishUpdate();
                 try {
-                    Path installer=get();
-                    if(JOptionPane.showConfirmDialog(frame,"Download verified. Install version "+update.version()+" now?\nRealtorDesk will close, update in its current folder, and reopen.\nYour client records and attachments will be kept.","Install and restart",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) {Files.deleteIfExists(installer);Files.deleteIfExists(installer.getParent());return;}
-                    var helper=Updater.launchInstaller(installer,installFolder);
-                    if(helper.waitFor(800,java.util.concurrent.TimeUnit.MILLISECONDS)) throw new Exception("The update helper could not start. Your current version is still open.");
-                    try { db.close(); } catch(Exception e) { helper.destroy();throw e; }
-                    frame.dispose();System.exit(0);
+                    installUpdate(update,get());
                 } catch(Exception e) { updateError(e); }
             }
         };
         worker.addPropertyChangeListener(e -> {if("progress".equals(e.getPropertyName()))bar.setValue((Integer)e.getNewValue());});
         worker.execute();
         dialog.setVisible(true);
+    }
+    void installUpdate(Updater.Update update,Path installer) {
+        try {
+            Path folder=Updater.installationFolder();
+            Object[] choices={"Install and restart","Not now"};
+            if(JOptionPane.showOptionDialog(frame,"Version "+update.version()+" is downloaded and verified. Install now?\nRealtorDesk will close, update in its current folder, and reopen.\nChoose Not now to keep the installer for the next update check.","Update ready",JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE,null,choices,choices[0])!=0)return;
+            var helper=Updater.launchInstaller(installer,folder);
+            if(helper.waitFor(800,java.util.concurrent.TimeUnit.MILLISECONDS))throw new Exception("The update helper could not start. The installer is saved for another attempt.");
+            try {db.close();}catch(Exception e){helper.destroy();throw e;}
+            frame.dispose();System.exit(0);
+        }catch(Exception e){updateError(e);}
     }
     interface Work { void run() throws Exception; }
     void safe(Work work) { try { work.run(); } catch(Exception e) { JOptionPane.showMessageDialog(frame,e.getMessage(),"Unable to complete action",JOptionPane.ERROR_MESSAGE); } }
