@@ -10,7 +10,7 @@ import java.util.*;
 import com.google.gson.*;
 
 public class RealtorApp {
-    static final String VERSION = "0.1.0";
+    static final String VERSION = "0.1.1";
     static final Path HOME = Path.of(System.getenv().getOrDefault("LOCALAPPDATA", System.getProperty("user.home")), "RealtorDesk");
     final JFrame frame = new JFrame("RealtorDesk • " + VERSION);
     final Properties settings = new Properties();
