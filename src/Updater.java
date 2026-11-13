@@ -144,14 +144,18 @@ final class Updater {
                 + "try {\nWait-Process -Id " + pid + " -ErrorAction SilentlyContinue\n"
                 + "$setup=Start-Process -FilePath (Join-Path $env:WINDIR 'System32\\msiexec.exe') -ArgumentList " + psLiteral(args) + " -Wait -PassThru\n"
                 + "if ($setup.ExitCode -notin @(0,3010)) { throw ('Installer failed with code '+$setup.ExitCode+'. Log: '+" + psLiteral(msi+".log") + ") }\n"
+                + "Remove-Item -LiteralPath " + psLiteral(installer.resolveSibling("installing.pid").toString()) + " -Force -ErrorAction SilentlyContinue\n"
                 + "Start-Process -FilePath " + psLiteral(launcher) + " -WorkingDirectory " + psLiteral(folder) + " -WindowStyle Hidden\n"
-                + "} catch { Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'RealtorDesk update') | Out-Null }\n";
+                + "} catch { $_.Exception.Message | Set-Content -LiteralPath " + psLiteral(installer.resolveSibling("install-failed.txt").toString()) + "; Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'RealtorDesk update') | Out-Null }\n";
     }
     static Process launchInstaller(Path installer, Path folder) throws Exception {
         String script = installerScript(installer, folder, ProcessHandle.current().pid());
         String encoded = Base64.getEncoder().encodeToString(script.getBytes(StandardCharsets.UTF_16LE));
         Path powershell = Path.of(System.getenv("WINDIR"), "System32/WindowsPowerShell/v1.0/powershell.exe");
-        return new ProcessBuilder(powershell.toString(), "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded)
-                .redirectOutput(installer.resolveSibling("updater-output.log").toFile()).redirectErrorStream(true).start();
+        var helper=new ProcessBuilder(powershell.toString(), "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectErrorStream(true).start();
+        try {Files.writeString(installer.resolveSibling("installing.pid"),Long.toString(helper.pid()));}
+        catch(Exception e) {helper.destroy();throw e;}
+        return helper;
     }
 }
