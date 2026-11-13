@@ -57,7 +57,9 @@ public class RealtorApp {
         tabs.add("Clients", records("clients", new String[]{"ID","Name","Phone","Email","Client type","Status","Notes"}, "SELECT id,name,phone,email,client_type,status,notes FROM clients", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Notes"}, "SELECT p.id,c.name,p.address,p.status,p.notes FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
-        tabs.add("Documents", records("documents", new String[]{"ID","Client","Filename","Stored path","Added"}, "SELECT d.id,c.name,d.name,d.path,d.added FROM documents d JOIN clients c ON c.id=d.client_id", this::addDocument));
+        var documents=new DocumentsPanel(db,HOME.resolve("documents"));
+        tabs.add("Documents",documents);
+        tabs.addChangeListener(e->{if(tabs.getSelectedComponent()==documents)documents.refreshVisible();});
         var root = new JPanel(new BorderLayout(10,10));
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());
@@ -118,9 +120,9 @@ public class RealtorApp {
             var edit=new JButton("Edit selected");edit.addActionListener(e -> editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click a client to edit their details.");
         }
-        if(type.equals("properties") || type.equals("documents")) {
-            var open=new JButton(type.equals("properties")?"Open map":"Open document");
-            open.addActionListener(e -> safe(() -> { if(table.getSelectedRow()<0) return; int r=table.convertRowIndexToModel(table.getSelectedRow()); if(type.equals("properties")) Desktop.getDesktop().browse(URI.create("https://www.google.com/maps/search/?api=1&query="+URLEncoder.encode(model.getValueAt(r,2).toString(), java.nio.charset.StandardCharsets.UTF_8))); else Desktop.getDesktop().open(Path.of(model.getValueAt(r,3).toString()).toFile()); })); buttons.add(open);
+        if(type.equals("properties")) {
+            var open=new JButton("Open map");
+            open.addActionListener(e -> safe(() -> {if(table.getSelectedRow()<0)return;int row=table.convertRowIndexToModel(table.getSelectedRow());Desktop.getDesktop().browse(URI.create("https://www.google.com/maps/search/?api=1&query="+URLEncoder.encode(model.getValueAt(row,2).toString(),java.nio.charset.StandardCharsets.UTF_8)));}));buttons.add(open);
         }
         panel.add(buttons,BorderLayout.NORTH); panel.add(new JScrollPane(table)); refresh.run(); return panel;
     }
@@ -150,7 +152,6 @@ public class RealtorApp {
     }
     void addProperty() { safe(() -> { var c=chooseClient();if(c==null)return; var v=form("Property","Address *","Status","Notes");if(v==null)return;if(v[0].isBlank())throw new Exception("Address is required."); execute("INSERT INTO properties(client_id,address,status,notes) VALUES(?,?,?,?)",c.id,v[0],v[1],v[2]); }); }
     void addCall() { safe(() -> { var c=chooseClient();if(c==null)return;var v=form("Log call","Follow-up date (YYYY-MM-DD, optional)","Call notes");if(v==null)return;if(!v[0].isBlank())LocalDate.parse(v[0]);execute("INSERT INTO calls(client_id,called,followup,notes) VALUES(?,?,?,?)",c.id,LocalDateTime.now().toString(),v[0],v[1]); }); }
-    void addDocument() { safe(() -> { var c=chooseClient();if(c==null)return;var picker=new JFileChooser();if(picker.showOpenDialog(frame)!=JFileChooser.APPROVE_OPTION)return;var source=picker.getSelectedFile().toPath();var dest=HOME.resolve("documents").resolve(UUID.randomUUID()+"-"+source.getFileName());Files.copy(source,dest);try { execute("INSERT INTO documents(client_id,name,path,added) VALUES(?,?,?,?)",c.id,source.getFileName().toString(),dest.toString(),LocalDate.now().toString()); } catch(Exception e) { Files.deleteIfExists(dest); throw e; } }); }
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }
     void showSettings() {
         AppTheme previous=AppTheme.fromId(settings.getProperty("theme"));
