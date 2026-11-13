@@ -20,6 +20,16 @@ public class RealtorApp {
     record Choice(long id, String name) { public String toString() { return name; } }
 
     public static void main(String[] args) {
+        // Older updaters reopen javaw directly. Switch once to the installed native launcher.
+        try {
+            Path folder=Updater.installationFolder();
+            String command=ProcessHandle.current().info().command().orElse("");
+            String executable=command.isEmpty()?"":Path.of(command).getFileName().toString();
+            if((executable.equalsIgnoreCase("javaw.exe")||executable.equalsIgnoreCase("java.exe")) && Files.isRegularFile(folder.resolve("RealtorDesk.exe"))) {
+                new ProcessBuilder(folder.resolve("RealtorDesk.exe").toString()).directory(folder.toFile()).start();
+                return;
+            }
+        } catch(Exception ignored) { /* Development runs and older layouts can start normally. */ }
         SwingUtilities.invokeLater(() -> { try { new RealtorApp().start(); } catch (Exception e) { JOptionPane.showMessageDialog(null, e.toString(), "Unable to start", JOptionPane.ERROR_MESSAGE); } });
     }
     void start() throws Exception {
@@ -36,6 +46,10 @@ public class RealtorApp {
             s.execute("PRAGMA user_version=1");
         }
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
+        var icons=new ArrayList<Image>();
+        for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
+        frame.setIconImages(icons);
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","Name","Phone","Email","Status","Notes"}, "SELECT * FROM clients", () -> editClient(null)));
