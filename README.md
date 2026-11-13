@@ -20,7 +20,7 @@ To use WiX 5 alongside other WiX installations, run from this project folder:
 dotnet tool install wix --version 5.0.2 --tool-path ./build/wix5
 ```
 
-The build prefers this project-local WiX installation. WiX 7 requires explicit acceptance of its maintenance-fee EULA; this project does not accept it automatically. The MSI packaging definition is prepared but has not yet passed a full build or installation test.
+The build prefers this project-local WiX installation. WiX 7 requires explicit acceptance of its maintenance-fee EULA; this project does not accept it automatically. The Windows x64 MSI builds successfully with WiX 5.0.2. Its contents were inspected for the application, dependencies and bundled runtime, and SQLite insert/read and version-comparison checks pass with that runtime. Installation, shortcuts, upgrades and full UI behavior still need end-to-end testing on Windows.
 
 ## Current features
 
