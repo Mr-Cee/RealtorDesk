@@ -1,0 +1,91 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <UI Id="RealtorDeskUI">
+      <TextStyle Id="Normal" FaceName="Segoe UI" Size="9" />
+      <TextStyle Id="Heading" FaceName="Segoe UI" Size="14" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="Normal" />
+      <Property Id="ErrorDialog" Value="ErrorDlg" />
+      <Dialog Id="InstallFolderDlg" Width="390" Height="245" Title="RealtorDesk Setup">
+        <Control Id="Title" Type="Text" X="20" Y="18" Width="350" Height="25" Text="{\Heading}Choose where to install" />
+        <Control Id="Description" Type="Text" X="20" Y="52" Width="350" Height="30" Text="RealtorDesk and its Java runtime will be installed in this folder." />
+        <Control Id="FolderLabel" Type="Text" X="20" Y="97" Width="350" Height="15" Text="Installation &amp;folder:" />
+        <Control Id="Folder" Type="PathEdit" X="20" Y="115" Width="273" Height="20" Property="INSTALLFOLDER" />
+        <Control Id="Browse" Type="PushButton" X="300" Y="115" Width="70" Height="20" Text="&amp;Browse...">
+          <Publish Event="SpawnDialog" Value="BrowseFolderDlg" />
+        </Control>
+        <Control Id="Hint" Type="Text" X="20" Y="150" Width="350" Height="35" Text="Choose a folder you have permission to write to. Client records and documents are stored separately in your Windows user profile." />
+        <Control Id="Line" Type="Line" X="0" Y="205" Width="390" Height="0" />
+        <Control Id="Install" Type="PushButton" X="220" Y="218" Width="72" Height="20" Default="yes" Text="&amp;Install">
+          <Publish Event="SetTargetPath" Value="INSTALLFOLDER" Order="1" />
+          <Publish Event="EndDialog" Value="Return" Order="2" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="300" Y="218" Width="70" Height="20" Cancel="yes" Text="Cancel">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+      <Dialog Id="BrowseFolderDlg" Width="390" Height="290" Title="Choose installation folder">
+        <Control Id="Label" Type="Text" X="20" Y="15" Width="350" Height="15" Text="Select a folder or enter a full path below:" />
+        <Control Id="Location" Type="DirectoryCombo" X="20" Y="35" Width="270" Height="80" Property="INSTALLFOLDER" Fixed="yes" Remote="yes" />
+        <Control Id="Up" Type="PushButton" X="300" Y="35" Width="70" Height="20" Text="Up one level">
+          <Publish Event="DirectoryListUp" Value="0" />
+        </Control>
+        <Control Id="Folders" Type="DirectoryList" X="20" Y="62" Width="350" Height="135" Property="INSTALLFOLDER" />
+        <Control Id="NewFolder" Type="PushButton" X="20" Y="205" Width="80" Height="20" Text="New folder">
+          <Publish Event="DirectoryListNew" Value="0" />
+        </Control>
+        <Control Id="Path" Type="PathEdit" X="110" Y="205" Width="260" Height="20" Property="INSTALLFOLDER" />
+        <Control Id="OK" Type="PushButton" X="220" Y="250" Width="72" Height="20" Default="yes" Text="OK">
+          <Publish Event="SetTargetPath" Value="INSTALLFOLDER" Order="1" />
+          <Publish Event="EndDialog" Value="Return" Order="2" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="300" Y="250" Width="70" Height="20" Cancel="yes" Text="Cancel">
+          <Publish Event="Reset" Value="0" Order="1" />
+          <Publish Event="EndDialog" Value="Return" Order="2" />
+        </Control>
+      </Dialog>
+      <Dialog Id="ProgressDlg" Width="390" Height="180" Title="RealtorDesk Setup" Modeless="yes">
+        <Control Id="Title" Type="Text" X="20" Y="20" Width="350" Height="25" TabSkip="no" Text="{\Heading}Installing RealtorDesk" />
+        <Control Id="Description" Type="Text" X="20" Y="65" Width="350" Height="25" Text="Please wait while setup copies the application and runtime." />
+        <Control Id="Progress" Type="ProgressBar" X="20" Y="110" Width="350" Height="16" ProgressBlocks="yes">
+          <Subscribe Event="SetProgress" Attribute="Progress" />
+        </Control>
+      </Dialog>
+      <Dialog Id="ExitDlg" Width="390" Height="180" Title="RealtorDesk Setup">
+        <Control Id="Title" Type="Text" X="20" Y="20" Width="350" Height="25" Text="{\Heading}Setup complete" />
+        <Control Id="Description" Type="Text" X="20" Y="65" Width="350" Height="35" Text="RealtorDesk setup completed successfully. Use the Start menu or desktop shortcut to open the program." />
+        <Control Id="Finish" Type="PushButton" X="300" Y="145" Width="70" Height="20" Default="yes" Cancel="yes" Text="Finish">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+      <Dialog Id="FatalError" Width="390" Height="180" Title="RealtorDesk Setup">
+        <Control Id="Description" Type="Text" X="20" Y="35" Width="350" Height="60" Text="Setup could not complete. Check that the selected folder is writable, then run setup again." />
+        <Control Id="Finish" Type="PushButton" X="300" Y="145" Width="70" Height="20" Default="yes" Cancel="yes" Text="Close">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+      <Dialog Id="UserExit" Width="390" Height="180" Title="RealtorDesk Setup">
+        <Control Id="Description" Type="Text" X="20" Y="35" Width="350" Height="60" Text="Setup was canceled. You can run the installer again at any time." />
+        <Control Id="Finish" Type="PushButton" X="300" Y="145" Width="70" Height="20" Default="yes" Cancel="yes" Text="Close">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+      </Dialog>
+      <Dialog Id="ErrorDlg" Width="390" Height="160" Title="RealtorDesk Setup" ErrorDialog="yes">
+        <Control Id="ErrorText" Type="Text" X="20" Y="20" Width="350" Height="85" Text="[ErrorText]" />
+        <Control Id="Y" Type="PushButton" X="12" Y="125" Width="45" Height="20" Text="Yes"><Publish Event="EndDialog" Value="ErrorYes" /></Control>
+        <Control Id="N" Type="PushButton" X="65" Y="125" Width="45" Height="20" Text="No"><Publish Event="EndDialog" Value="ErrorNo" /></Control>
+        <Control Id="A" Type="PushButton" X="118" Y="125" Width="45" Height="20" Text="Abort"><Publish Event="EndDialog" Value="ErrorAbort" /></Control>
+        <Control Id="R" Type="PushButton" X="171" Y="125" Width="45" Height="20" Text="Retry"><Publish Event="EndDialog" Value="ErrorRetry" /></Control>
+        <Control Id="I" Type="PushButton" X="224" Y="125" Width="45" Height="20" Text="Ignore"><Publish Event="EndDialog" Value="ErrorIgnore" /></Control>
+        <Control Id="O" Type="PushButton" X="277" Y="125" Width="45" Height="20" Text="OK" Default="yes"><Publish Event="EndDialog" Value="ErrorOk" /></Control>
+        <Control Id="C" Type="PushButton" X="330" Y="125" Width="45" Height="20" Text="Cancel" Cancel="yes"><Publish Event="EndDialog" Value="ErrorCancel" /></Control>
+      </Dialog>
+      <InstallUISequence>
+        <Show Dialog="InstallFolderDlg" Before="ProgressDlg" Condition="NOT Installed" />
+        <Show Dialog="ProgressDlg" Before="ExecuteAction" />
+        <Show Dialog="ExitDlg" OnExit="success" />
+        <Show Dialog="FatalError" OnExit="error" />
+        <Show Dialog="UserExit" OnExit="cancel" />
+      </InstallUISequence>
+    </UI>
+  </Fragment>
+</Wix>
