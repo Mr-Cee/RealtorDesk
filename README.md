@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. Version 0.1.0.
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. Version 0.1.1.
 
 ## Run and package
 
@@ -13,6 +13,8 @@ From PowerShell with a JDK on PATH:
 ```
 
 The build uses pinned JDBC, logging and JSON dependencies from the local Maven cache when available, otherwise downloading them from Maven Central. Installer creation uses jlink and WiX directly to build a per-user Windows MSI that includes the Java runtime and libraries. End users do not need Java, SQLite, or a database service installed separately. Output is in dist/. Keep the upgrade UUID fixed across versions.
+
+Version 0.1.1 adds a folder-selection screen with a Browse dialog. Choose a writable installation folder; setup remains per-user and does not request administrator rights. Both shortcuts resolve the chosen folder, and setup saves it for future upgrades. Client data remains under `%LOCALAPPDATA%/RealtorDesk`. To relocate an existing installation, uninstall it first and then install to the new folder; the uninstaller leaves client data in place.
 
 To use WiX 5 alongside other WiX installations, run from this project folder:
 
