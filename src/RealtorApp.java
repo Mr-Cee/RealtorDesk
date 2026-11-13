@@ -196,12 +196,8 @@ public class RealtorApp {
     void addProperty(){editProperty(null);}
     void editProperty(Long id){safe(()->{
         var original=id==null?null:PropertyStore.load(db,id);
-        var property=PropertyEditor.edit(frame,db,original,java.util.List.of());if(property==null)return;
-        var choices=new ArrayList<Choice>();choices.add(new Choice(0,"Unassigned"));
-        try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name,phone,email FROM clients ORDER BY name,id")){while(r.next())choices.add(new Choice(r.getLong(1),r.getString(2)+" | "+r.getString(3)+" | "+r.getString(4)+" (#"+r.getLong(1)+")"));}
-        Choice initial=choices.get(0);if(original!=null&&original.clientId()!=null)for(var c:choices)if(c.id()==original.clientId())initial=c;
-        var owner=(Choice)JOptionPane.showInputDialog(frame,"Linked client (optional)","Property client",JOptionPane.QUESTION_MESSAGE,null,choices.toArray(),initial);if(owner==null)return;
-        PropertyStore.save(db,new PropertyStore.Property(property.id(),owner.id()==0?null:owner.id(),property.address(),property.status(),property.notes(),property.parts(),property.closedPriceCents()));refreshRecords();
+        var property=PropertyEditor.edit(frame,db,original,java.util.List.of(),true);if(property==null)return;
+        PropertyStore.save(db,property);refreshRecords();
     });}
     void addCall() { safe(() -> { var c=chooseClient();if(c==null)return;var v=form("Log call","Follow-up date (YYYY-MM-DD, optional)","Call notes");if(v==null)return;if(!v[0].isBlank())LocalDate.parse(v[0]);execute("INSERT INTO calls(client_id,called,followup,notes) VALUES(?,?,?,?)",c.id,LocalDateTime.now().toString(),v[0],v[1]); }); }
     void execute(String sql,Object... args) throws Exception { try(var p=db.prepareStatement(sql)) { for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);p.executeUpdate(); } }

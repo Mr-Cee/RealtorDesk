@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.17).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.18).
 
 ## Run and package
 
@@ -34,7 +34,7 @@ The build prefers this project-local WiX installation. WiX 7 requires explicit a
 
 ## Current features
 
-Version 0.1.17 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
+Version 0.1.18 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
 
 The transactional schema migration adds first_name and last_name, initially splitting the first word from the remaining name text. The existing full-name column is left unchanged during migration, and all IDs, types, notes and linked records remain intact. Multiword/compound names can be corrected in Edit; the existing full name is shown for comparison when applicable. Either name field can be blank, but at least one is required, allowing single names and business clients. Saving recomputes the combined display name used by Properties, Calls, Documents and client pickers. Repeat migrations preserve corrected split names.
 
@@ -88,3 +88,5 @@ Properties has a Delete property button with confirmation. Linked properties sho
 
 
 Properties hides internal IDs and displays Closed Price instead of the Notes column. Notes remain in the editor. Optional closing prices can be edited from either property workflow; prices use integer cents in SQLite, display as USD, and sort numerically. Blank prices are NULL, distinct from a recorded zero. Negative values and more than two decimal places are rejected.
+
+The Properties editor includes a Linked client dropdown with the existing owner preselected; there is no follow-up assignment popup. Save updates property details and owner together; Cancel changes neither. New properties default to Unassigned. Properties edited inside a client retain that client's context.
