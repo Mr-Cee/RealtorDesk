@@ -41,6 +41,8 @@ if ($Test) {
  if ($LASTEXITCODE -ne 0) { throw 'Theme tests failed' }
  & java --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientTest
  if ($LASTEXITCODE -ne 0) { throw 'Client tests failed' }
+ & java --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientNameSearchTest
+ if ($LASTEXITCODE -ne 0) { throw 'Client name and search tests failed' }
  & java --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' DocumentTest
  if ($LASTEXITCODE -ne 0) { throw 'Document tests failed' }
 }
@@ -59,6 +61,8 @@ if ($Installer) {
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime theme checks failed' }
   & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientTest
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime client checks failed' }
+  & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' ClientNameSearchTest
+  if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime name and search checks failed' }
   & "$runtimePath/bin/java.exe" --enable-native-access=ALL-UNNAMED '-Djava.awt.headless=true' -cp 'build/lib/*;build/classes;build/testclasses' DocumentTest
   if ($LASTEXITCODE -ne 0) { throw 'Bundled runtime document checks failed' }
  }
