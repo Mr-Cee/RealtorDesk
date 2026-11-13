@@ -1,13 +1,13 @@
-RealtorDesk 0.1.20
+RealtorDesk 0.1.21
 
 What's new
 
-- Added Search clients above the Linked client dropdown in the property editor.
-- The dropdown filters instantly by name, phone or email, with case/accent-insensitive multiword matching.
-- Clear restores the full list. A count shows matching clients; Unassigned remains available.
-- Searching never changes the selected client automatically. Choose a matching client explicitly, then save the property.
+- Added an optional MLS # field to property information in both property-editing workflows.
+- MLS numbers preserve leading zeroes and hyphens and appear in the Properties table.
+- Added instant Properties search for any part of an address or MLS number, including multiword combinations.
+- Search includes Clear, a matching count, and a no-matches message. Filtering remains active when records refresh.
 
-Existing client links, property addresses, notes and Closed Price information are preserved.
+Existing property information, linked clients and Closed Price values are preserved. Existing MLS numbers start blank.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

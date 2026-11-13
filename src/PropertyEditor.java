@@ -9,8 +9,8 @@ final class PropertyEditor {
     }
     static PropertyStore.Property edit(Component parent,Connection db,PropertyStore.Property original,java.util.List<PropertyStore.Property> drafts,boolean chooseClient) {
         PropertyAddress initial=original==null?PropertyAddress.legacy(""):original.parts()==null?PropertyAddress.legacy(original.address()):original.parts();
-        String[] values={initial.number(),initial.direction(),initial.street(),initial.type(),initial.unit(),initial.city(),initial.state(),initial.zip(),original==null?"":original.status(),original==null?"":original.notes(),original==null?"":PropertyPrice.editable(original.closedPriceCents())};
-        String[] labels={"Street number *","Direction","Street name *","Street type","Unit / Apt","City *","State *","ZIP code *","Status","Notes","Closed price ($)"};
+        String[] values={initial.number(),initial.direction(),initial.street(),initial.type(),initial.unit(),initial.city(),initial.state(),initial.zip(),original==null?"":original.status(),original==null?"":original.notes(),original==null?"":PropertyPrice.editable(original.closedPriceCents()),original==null?"":original.mlsNumber()};
+        String[] labels={"Street number *","Direction","Street name *","Street type","Unit / Apt","City *","State *","ZIP code *","Status","Notes","Closed price ($)","MLS #"};
         var fields=new JTextField[values.length];var form=new JPanel(new GridLayout(0,2,8,8));
         PropertyClientField owner=null;
         if(chooseClient) {
@@ -25,7 +25,7 @@ final class PropertyEditor {
             try {
                 var address=new PropertyAddress(fields[0].getText(),fields[1].getText(),fields[2].getText(),fields[3].getText(),fields[4].getText(),fields[5].getText(),fields[6].getText(),fields[7].getText());address.validate();
                 Long clientId=owner==null?(original==null?null:original.clientId()):owner.clientId();
-                var candidate=new PropertyStore.Property(original==null?null:original.id(),clientId,address.formatted(),fields[8].getText().trim(),fields[9].getText().trim(),address,PropertyPrice.parse(fields[10].getText()));
+                var candidate=new PropertyStore.Property(original==null?null:original.id(),clientId,address.formatted(),fields[8].getText().trim(),fields[9].getText().trim(),address,PropertyPrice.parse(fields[10].getText()),fields[11].getText());
                 if(Duplicates.confirm(parent,"properties",Duplicates.properties(db,candidate,drafts.stream().filter(p->p!=original).toList())))return candidate;
             }catch(Exception e){JOptionPane.showMessageDialog(parent,e.getMessage(),"Check property",JOptionPane.WARNING_MESSAGE);}
         }return null;

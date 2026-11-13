@@ -57,7 +57,7 @@ public class RealtorApp {
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
-        tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
+        tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         tabs.add("Calls & follow-ups", records("calls", new String[]{"ID","Client","Called","Follow-up","Notes"}, "SELECT x.id,c.name,x.called,x.followup,x.notes FROM calls x JOIN clients c ON c.id=x.client_id ORDER BY x.followup", this::addCall));
         var documents=new DocumentsPanel(db,HOME.resolve("documents"));
         tabs.add("Documents",documents);
@@ -125,6 +125,7 @@ public class RealtorApp {
         Runnable refresh = () -> safe(() -> { model.setRowCount(0); try(var s=db.createStatement();var rs=s.executeQuery(sql)) { while(rs.next()) { Object[] row=new Object[columns.length]; for(int i=0;i<row.length;i++) row[i]=rs.getObject(i+1); model.addRow(row); } } });
         recordRefreshers.add(refresh);
         var buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel toolbar=buttons;
         var create = new JButton("Add " + type); create.addActionListener(e -> { add.run(); refreshRecords(); }); buttons.add(create);
         var reload = new JButton("Refresh"); reload.addActionListener(e -> refresh.run()); buttons.add(reload);
         if(type.equals("clients")) {
@@ -139,6 +140,9 @@ public class RealtorApp {
         }
         if(type.equals("properties")) {
             PropertyPrice.configureTable(table);
+            var search=new JTextField(25);var header=new JPanel(new BorderLayout());header.add(buttons,BorderLayout.NORTH);header.add(DocumentsPanel.searchBar("Search address / MLS #:",search),BorderLayout.SOUTH);toolbar=header;
+            var count=new JLabel();panel.add(count,BorderLayout.SOUTH);
+            ClientSearch.attach(table,search,count,"properties","No properties yet. Add a property to get started.","Search any address part or MLS number. Combine multiple words to narrow results.",2,5);
             Runnable editSelected=ClientTableActions.install(table,this::editProperty,this::refreshRecords);
             var edit=new JButton("Edit selected");edit.addActionListener(e->editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click to edit a property or change its client.");
@@ -152,7 +156,7 @@ public class RealtorApp {
             var open=new JButton("Open map");
             open.addActionListener(e -> safe(() -> {if(table.getSelectedRow()<0)return;int row=table.convertRowIndexToModel(table.getSelectedRow());Desktop.getDesktop().browse(URI.create("https://www.google.com/maps/search/?api=1&query="+URLEncoder.encode(model.getValueAt(row,2).toString(),java.nio.charset.StandardCharsets.UTF_8)));}));buttons.add(open);
         }
-        panel.add(buttons,BorderLayout.NORTH); panel.add(new JScrollPane(table)); refresh.run(); return panel;
+        panel.add(toolbar,BorderLayout.NORTH); panel.add(new JScrollPane(table)); refresh.run(); return panel;
     }
     void editClient(Long id) { safe(() -> {
         String[] values={"","","","","Lead",""};
