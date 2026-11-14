@@ -50,7 +50,7 @@ public class RealtorApp {
             s.execute("CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),called TEXT,followup TEXT,notes TEXT)");
             s.execute("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
         }
-        ClientStore.migrate(db);PropertyStore.migrate(db);
+        ClientStore.migrate(db);PropertyStore.migrate(db);Statuses.migrate(db);
         var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
         var icons=new ArrayList<Image>();
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
@@ -137,13 +137,15 @@ public class RealtorApp {
             var search=new JTextField(23);var label=new JLabel("Search clients:");label.setLabelFor(search);buttons.add(label);buttons.add(search);
             var clear=new JButton("Clear");clear.addActionListener(e->{search.setText("");search.requestFocusInWindow();});buttons.add(clear);
             var count=new JLabel();count.setBorder(BorderFactory.createEmptyBorder(4,4,4,4));panel.add(count,BorderLayout.SOUTH);
-            ClientSearch.attach(table,search,count);
+            var includeClosed=new JCheckBox("Include closed",true);buttons.add(includeClosed);
+            ClientSearch.attachWithClosed(table,search,count,"clients","","Search names, property addresses, phone, email, status or notes.",includeClosed,8,1,2,3,4,5,6,7,8,9);
         }
         if(type.equals("properties")) {
             PropertyPrice.configureTable(table);
             var search=new JTextField(25);var header=new JPanel(new BorderLayout());header.add(buttons,BorderLayout.NORTH);header.add(DocumentsPanel.searchBar("Search address / MLS #:",search),BorderLayout.SOUTH);toolbar=header;
             var count=new JLabel();panel.add(count,BorderLayout.SOUTH);
-            ClientSearch.attach(table,search,count,"properties","No properties yet. Add a property to get started.","Search any address part or MLS number. Combine multiple words to narrow results.",2,5);
+            var includeClosed=new JCheckBox("Include closed",true);buttons.add(includeClosed);
+            ClientSearch.attachWithClosed(table,search,count,"properties","No properties yet. Add a property to get started.","Search any address part or MLS number. Combine multiple words to narrow results.",includeClosed,3,2,5);
             Runnable editSelected=ClientTableActions.install(table,this::editProperty,this::refreshRecords);
             var edit=new JButton("Edit selected");edit.addActionListener(e->editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click to edit a property or change its client.");
@@ -166,10 +168,11 @@ public class RealtorApp {
         KeyDates savedKeyDates=KeyDates.EMPTY;
         if(id!=null) {var client=ClientStore.load(db,id);values=new String[]{client.firstName(),client.lastName(),client.phone(),client.email(),client.status(),client.notes()};selectedType=client.type();previousName=client.name();savedAddress=client.sellerAddress();savedDate=client.lastCommunicated();savedKeyDates=client.keyDates();}
         var clientType=new JComboBox<ClientStore.Type>(ClientStore.Type.values());clientType.setSelectedItem(selectedType);
+        var status=Statuses.clientField(values[4],selectedType);
         var fields=new JTextField[6]; var form=new JPanel(new GridLayout(0,2,8,8)); String[] labels={"First name","Last name","Phone","Email","Status","Notes"};
         for(int i=0;i<6;i++) {
             if(i==4){form.add(new JLabel("Client type"));form.add(clientType);}
-            fields[i]=new JTextField(values[i],30);form.add(new JLabel(labels[i]));form.add(fields[i]);
+            fields[i]=new JTextField(values[i],30);form.add(new JLabel(labels[i]));form.add(i==4?status:fields[i]);
         }
         var communicated=new DatePicker(savedDate);form.add(new JLabel("Date Last Communicated"));form.add(communicated);
         if(id!=null&&(previousName.contains(",")||previousName.trim().split("(?U)\\s+").length>2)) {
@@ -185,7 +188,7 @@ public class RealtorApp {
             if(Duplicates.confirm(frame,"clients",Duplicates.clients(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText(),fields[3].getText())))break;
         }
         String legacyAddress=savedAddress;
-        PropertyStore.saveClient(db,id,()->ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),fields[4].getText().trim(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),legacyAddress,communicated.date(),keyDates.dates()),linkedProperties.drafts());
+        PropertyStore.saveClient(db,id,()->ClientStore.save(db,id,fields[0].getText(),fields[1].getText(),fields[2].getText().trim(),fields[3].getText().trim(),(String)status.getSelectedItem(),fields[5].getText().trim(),(ClientStore.Type)clientType.getSelectedItem(),legacyAddress,communicated.date(),keyDates.dates()),linkedProperties.drafts());
     }); }
     Choice chooseClient() throws Exception {
         var choices=new ArrayList<Choice>(); try(var s=db.createStatement();var r=s.executeQuery("SELECT id,name FROM clients ORDER BY name")) { while(r.next()) choices.add(new Choice(r.getLong(1),r.getString(2))); }

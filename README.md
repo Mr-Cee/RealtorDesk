@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.27).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.28).
 
 ## Run and package
 
@@ -34,7 +34,7 @@ The build prefers this project-local WiX installation. WiX 7 requires explicit a
 
 ## Current features
 
-Version 0.1.27 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
+Version 0.1.28 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
 
 The transactional schema migration adds first_name and last_name, initially splitting the first word from the remaining name text. The existing full-name column is left unchanged during migration, and all IDs, types, notes and linked records remain intact. Multiword/compound names can be corrected in Edit; the existing full name is shown for comparison when applicable. Either name field can be blank, but at least one is required, allowing single names and business clients. Saving recomputes the combined display name used by Properties, Calls, Documents and client pickers. Repeat migrations preserve corrected split names.
 
@@ -108,3 +108,5 @@ Reports provides average milestone durations and Closed Price with sample counts
 Calendar fields open directly when clicked, including blank dates. Focus a date and press Enter, Space or Alt+Down for keyboard access. Separate Choose date buttons are removed; Clear remains. This applies to report ranges and client date fields. Disabled fields do not open the calendar.
 
 Properties columns are Client, Address, MLS #, Status, Closed Price and Commission. Commission is an optional dollar amount in the property editor, stored as integer cents, formatted as currency and sorted numerically. Blank is distinct from zero. Values persist through client assignment and detachment.
+
+Status fields use fixed dropdowns. Clients: Lead (default), Looking for Home, Selling Home, Offered, Closed. Properties: Listed (default), Offered, Closed. Include closed is checked by default on each list; turning it off combines with the live text search and survives list refreshes during the session. Records remain available to reports and documents. Legacy status conversions preserve original values in legacy_statuses; unsupported client/property values fall back to Lead/Listed. Client and property statuses are independent.

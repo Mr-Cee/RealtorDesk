@@ -67,7 +67,7 @@ final class ClientStore {
         java.util.Objects.requireNonNull(keyDates,"Key dates");
         String sql=id==null?"INSERT INTO clients(name,phone,email,status,notes,client_type,first_name,last_name,seller_address,last_communicated,date_start,date_offer,date_close) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)":"UPDATE clients SET name=?,phone=?,email=?,status=?,notes=?,client_type=?,first_name=?,last_name=?,seller_address=?,last_communicated=?,date_start=?,date_offer=?,date_close=? WHERE id=?";
         try(var p=db.prepareStatement(sql)) {
-            p.setString(1,name);p.setString(2,phone);p.setString(3,email);p.setString(4,status);p.setString(5,notes);p.setString(6,type.label);p.setString(7,first);p.setString(8,last);
+            p.setString(1,name);p.setString(2,phone);p.setString(3,email);p.setString(4,Statuses.client(status,type));p.setString(5,notes);p.setString(6,type.label);p.setString(7,first);p.setString(8,last);
             p.setString(9,sellerAddress==null?"":sellerAddress.trim());
             p.setString(10,date);
             String[] dates={keyDates.start(),keyDates.offer(),keyDates.close()};

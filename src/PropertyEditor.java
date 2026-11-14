@@ -11,6 +11,7 @@ final class PropertyEditor {
         PropertyAddress initial=original==null?PropertyAddress.legacy(""):original.parts()==null?PropertyAddress.legacy(original.address()):original.parts();
         String[] values={initial.number(),initial.direction(),initial.street(),initial.type(),initial.unit(),initial.city(),initial.state(),initial.zip(),original==null?"":original.status(),original==null?"":original.notes(),original==null?"":PropertyPrice.editable(original.closedPriceCents()),original==null?"":original.mlsNumber(),original==null?"":PropertyPrice.editable(original.commissionCents())};
         String[] labels={"Street number *","Direction","Street name *","Street type","Unit / Apt","City *","State *","ZIP code *","Status","Notes","Closed price ($)","MLS #","Commission ($)"};
+        var status=Statuses.propertyField(original==null?"Listed":original.status());
         var fields=new JTextField[values.length];var form=new JPanel(new GridLayout(0,2,8,8));
         PropertyClientField owner=null;
         if(chooseClient) {
@@ -18,13 +19,13 @@ final class PropertyEditor {
             catch(Exception e){JOptionPane.showMessageDialog(parent,e.getMessage(),"Property",JOptionPane.ERROR_MESSAGE);return null;}
             var label=new JLabel("Linked client (optional)");label.setLabelFor(owner.display);form.add(label);form.add(owner);
         }
-        for(int i=0;i<fields.length;i++){fields[i]=new JTextField(values[i],28);var label=new JLabel(labels[i]);label.setLabelFor(fields[i]);form.add(label);form.add(fields[i]);}
+        for(int i=0;i<fields.length;i++){fields[i]=new JTextField(values[i],28);var label=new JLabel(labels[i]);label.setLabelFor(i==8?status:fields[i]);form.add(label);form.add(i==8?status:fields[i]);}
         if(original!=null){var previous=new JTextField(original.address(),28);previous.setEditable(false);form.add(new JLabel("Address on file"));form.add(previous);}
         while(JOptionPane.showConfirmDialog(parent,form,"Property",JOptionPane.OK_CANCEL_OPTION)==JOptionPane.OK_OPTION) {
             try {
                 var address=new PropertyAddress(fields[0].getText(),fields[1].getText(),fields[2].getText(),fields[3].getText(),fields[4].getText(),fields[5].getText(),fields[6].getText(),fields[7].getText());address.validate();
                 Long clientId=owner==null?(original==null?null:original.clientId()):owner.clientId();
-                var candidate=new PropertyStore.Property(original==null?null:original.id(),clientId,address.formatted(),fields[8].getText().trim(),fields[9].getText().trim(),address,PropertyPrice.parse(fields[10].getText()),fields[11].getText(),PropertyPrice.parse(fields[12].getText()));
+                var candidate=new PropertyStore.Property(original==null?null:original.id(),clientId,address.formatted(),(String)status.getSelectedItem(),fields[9].getText().trim(),address,PropertyPrice.parse(fields[10].getText()),fields[11].getText(),PropertyPrice.parse(fields[12].getText()));
                 if(Duplicates.confirm(parent,"properties",Duplicates.properties(db,candidate,drafts.stream().filter(p->p!=original).toList())))return candidate;
             }catch(Exception e){JOptionPane.showMessageDialog(parent,e.getMessage(),"Check property",JOptionPane.WARNING_MESSAGE);}
         }return null;

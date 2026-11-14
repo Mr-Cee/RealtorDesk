@@ -1,13 +1,13 @@
-RealtorDesk 0.1.27
+RealtorDesk 0.1.28
 
 What's new
 
-- MLS # now appears immediately to the right of Address in Properties.
-- Added Commission immediately to the right of Closed Price.
-- Enter an optional Commission dollar amount in the property editor, from either Properties or a client's linked-property section.
-- Commission displays as currency, sorts numerically, and is preserved when assigning or detaching clients. Existing commissions start blank.
+- Client Status is now a dropdown: Lead, Looking for Home, Selling Home, Offered, Closed. New clients default to Lead.
+- Property Status is now a dropdown: Listed, Offered, Closed. New properties default to Listed.
+- Clients and Properties each have an Include closed checkbox, checked by default. Uncheck it to hide Closed records from both the list and live search.
+- Common legacy statuses are converted: Sold to Closed; Pending, Under offer and Under contract to Offered. Active buyer/seller clients become Looking for Home/Selling Home. Other values use Lead/Listed; original converted values are retained in the database for reference.
 
-Existing prices, MLS numbers, client links and documents are preserved.
+Existing client links, addresses, MLS numbers, Closed Price values, commissions and documents are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

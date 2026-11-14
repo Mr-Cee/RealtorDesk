@@ -11,6 +11,9 @@ final class ClientSearch {
         attach(table,search,count,"clients","","Search names, linked property addresses, phone, email, client type, communication date, status or notes. Use multiple words to narrow results.",columns);
     }
     static void attach(JTable table,JTextField search,JLabel count,String noun,String emptyMessage,String tooltip,int... columns) {
+        attachWithClosed(table,search,count,noun,emptyMessage,tooltip,null,-1,columns);
+    }
+    static void attachWithClosed(JTable table,JTextField search,JLabel count,String noun,String emptyMessage,String tooltip,JCheckBox includeClosed,int statusColumn,int... columns) {
         @SuppressWarnings("unchecked") var sorter=(TableRowSorter<TableModel>)table.getRowSorter();
         Runnable updateCount=()->{
             int total=table.getModel().getRowCount(),visible=table.getRowCount();
@@ -18,11 +21,12 @@ final class ClientSearch {
         };
         Runnable filter=()->{
             String query=normalize(search.getText()).trim();
-            if(query.isEmpty())sorter.setRowFilter(null);
+            if(query.isEmpty()&&(includeClosed==null||includeClosed.isSelected()))sorter.setRowFilter(null);
             else {
                 String[] words=query.split("\\s+");
                 sorter.setRowFilter(new RowFilter<TableModel,Integer>() {
                     public boolean include(Entry<? extends TableModel,? extends Integer> row) {
+                        if(includeClosed!=null&&!includeClosed.isSelected()&&"closed".equals(normalize(Objects.toString(row.getValue(statusColumn),"")).trim()))return false;
                         for(String word:words) {
                             boolean found=false;
                             for(int column:columns) {
@@ -42,6 +46,7 @@ final class ClientSearch {
             updateCount.run();
         };
         search.getDocument().addDocumentListener(new DocumentListener(){public void insertUpdate(DocumentEvent e){filter.run();}public void removeUpdate(DocumentEvent e){filter.run();}public void changedUpdate(DocumentEvent e){filter.run();}});
+        if(includeClosed!=null)includeClosed.addActionListener(e->filter.run());
         sorter.addRowSorterListener(e->updateCount.run());
         table.getModel().addTableModelListener(e->updateCount.run());
         search.setToolTipText(tooltip);
