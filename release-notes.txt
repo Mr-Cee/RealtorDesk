@@ -1,12 +1,14 @@
-RealtorDesk 0.1.23
+RealtorDesk 0.1.24
 
 What's new
 
-- Centered Status and Closed Price values in the Properties table.
-- Centered the Documents count in the Documents tab's client list.
-- Removed the Calls & follow-ups tab. Existing call records remain stored in the database.
+- Settings now includes a Data folder chooser for the database, documents and other saved artifacts.
+- Choose a separate empty folder and Save to copy and verify your data, update document links, and reload the app from the new location.
+- The app remembers this folder for every startup and future update. Program installation location remains separate.
+- Original files are retained as a fallback copy. Existing destination files are never overwritten.
+- If a saved data folder is unavailable, startup reports the location instead of creating a new empty database.
 
-Property prices, client links, MLS numbers and documents are preserved.
+Client records, property links, MLS numbers, Closed Price values and documents are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

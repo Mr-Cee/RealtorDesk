@@ -15,6 +15,7 @@ public class RealtorApp {
     final JFrame frame = new JFrame("RealtorDesk • " + VERSION);
     final Properties settings = new Properties();
     Connection db;
+    Path dataHome;
     final java.util.List<Runnable> recordRefreshers=new ArrayList<>();
     void refreshRecords(){for(var refresh:recordRefreshers)refresh.run();}
     final JMenuItem updateMenuItem = new JMenuItem("Check for updates");
@@ -36,12 +37,12 @@ public class RealtorApp {
         SwingUtilities.invokeLater(() -> { try { new RealtorApp().start(); } catch (Exception e) { JOptionPane.showMessageDialog(null, e.toString(), "Unable to start", JOptionPane.ERROR_MESSAGE); } });
     }
     void start() throws Exception {
-        Files.createDirectories(HOME.resolve("documents"));
         settings.setProperty("repository", "Mr-Cee/RealtorDesk");
         settings.putAll(AppSettings.load(HOME.resolve("settings.properties")));
+        dataHome=DataLocation.folder(settings,HOME);Files.createDirectories(dataHome.resolve("documents"));
         AppTheme.fromId(settings.getProperty("theme")).apply();
         java.util.concurrent.CompletableFuture.runAsync(() -> cleanupInstalledUpdates(Path.of(System.getProperty("java.io.tmpdir"))));
-        db = DriverManager.getConnection("jdbc:sqlite:" + HOME.resolve("realtor.db"));
+        db = DriverManager.getConnection("jdbc:sqlite:" + dataHome.resolve("realtor.db"));
         try (var s = db.createStatement()) {
             s.execute("PRAGMA foreign_keys=ON");
             s.execute("CREATE TABLE IF NOT EXISTS clients(id INTEGER PRIMARY KEY,name TEXT NOT NULL,phone TEXT,email TEXT,status TEXT,notes TEXT)");
@@ -58,14 +59,14 @@ public class RealtorApp {
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
-        var documents=new DocumentsPanel(db,HOME.resolve("documents"));
+        var documents=new DocumentsPanel(db,dataHome.resolve("documents"));
         tabs.add("Documents",documents);
         tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();});
         var root = new JPanel(new BorderLayout(10,10));
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());
         top.add(new JLabel("RealtorDesk — Clients, homes and conversations"), BorderLayout.WEST);
-        root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + HOME), BorderLayout.SOUTH);
+        root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + dataHome), BorderLayout.SOUTH);
         frame.setContentPane(root); frame.setSize(1150,700); frame.setLocationRelativeTo(null); frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); frame.setVisible(true);
         SwingUtilities.invokeLater(() -> {
             if (ReleaseNotes.shouldShow(settings, VERSION)) showReleaseNotes();
@@ -106,7 +107,7 @@ public class RealtorApp {
                 + "\n\nA desktop organizer for individual realtors."
                 + "\nManage clients, properties and paperwork."
                 + "\n\nYour records and attachments are stored locally on this computer."
-                + "\nData folder: " + HOME
+                + "\nData folder: " + dataHome
                 + "\n\nProject and releases:\nhttps://github.com/Mr-Cee/RealtorDesk");
         information.setEditable(false);
         information.setOpaque(false);
@@ -216,6 +217,11 @@ public class RealtorApp {
         layout.gridy=2;layout.gridwidth=1;layout.weightx=0;form.add(new JLabel("Update repository"),layout);
         layout.gridx=1;layout.weightx=1;form.add(repository,layout);
         layout.gridx=0;layout.gridy=3;layout.gridwidth=2;form.add(new JLabel("GitHub owner/repository. Leave blank to turn off startup checks."),layout);
+        var dataFolder=new JTextField(dataHome.toString(),35);dataFolder.setEditable(false);
+        var browse=new JButton("Browse...");browse.addActionListener(e->{var picker=new JFileChooser(dataFolder.getText());picker.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);picker.setDialogTitle("Choose an empty folder for RealtorDesk data");if(picker.showOpenDialog(frame)==JFileChooser.APPROVE_OPTION)dataFolder.setText(picker.getSelectedFile().toPath().toAbsolutePath().normalize().toString());});
+        var location=new JPanel(new BorderLayout(6,0));location.add(dataFolder);location.add(browse,BorderLayout.EAST);
+        layout.gridy=4;layout.gridx=0;layout.gridwidth=1;form.add(new JLabel("Data folder"),layout);layout.gridx=1;form.add(location,layout);
+        layout.gridy=5;layout.gridx=0;layout.gridwidth=2;form.add(new JLabel("Choose an empty folder. Save copies your data, verifies it, and reloads the app."),layout);
         theme.addActionListener(e -> ((AppTheme)theme.getSelectedItem()).apply());
         boolean saved=false;
         try {
@@ -229,11 +235,25 @@ public class RealtorApp {
                 }
                 var updated=new Properties();updated.putAll(settings);updated.setProperty("repository",repo);
                 updated.setProperty("theme",((AppTheme)theme.getSelectedItem()).id);
+                Path requested=Path.of(dataFolder.getText()).toAbsolutePath().normalize();
+                if(!requested.equals(dataHome.toAbsolutePath().normalize())) {
+                    relocateData(requested,updated);saved=true;db.close();frame.dispose();new RealtorApp().start();return;
+                }
                 AppSettings.save(HOME.resolve("settings.properties"),updated);
                 settings.clear();settings.putAll(updated);saved=true;return;
             }
         } catch(Exception e){JOptionPane.showMessageDialog(frame,e.getMessage(),"Settings could not be saved",JOptionPane.ERROR_MESSAGE);}
         finally {if(!saved)previous.apply();}
+    }
+    void relocateData(Path target,Properties updated)throws Exception {
+        var progress=new JDialog(frame,"Moving RealtorDesk data",true);progress.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        var panel=new JPanel(new BorderLayout(10,10));panel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
+        panel.add(new JLabel("Copying and verifying the database and documents. Please wait..."),BorderLayout.NORTH);var bar=new JProgressBar();bar.setIndeterminate(true);panel.add(bar);progress.setContentPane(panel);progress.pack();progress.setLocationRelativeTo(frame);
+        var failure=new java.util.concurrent.atomic.AtomicReference<Exception>();
+        var worker=new SwingWorker<Path,Void>() {
+            protected Path doInBackground()throws Exception{return DataLocation.relocate(db,dataHome,target,HOME.resolve("settings.properties"),updated);}
+            protected void done(){try{get();}catch(Exception e){Throwable cause=e;while(cause.getCause()!=null)cause=cause.getCause();failure.set(cause instanceof Exception ex?ex:new Exception(cause));}finally{progress.dispose();}}
+        };worker.execute();progress.setVisible(true);if(failure.get()!=null)throw failure.get();
     }
     static boolean newer(String tag) {
         try { return Updater.compareVersions(tag, VERSION)>0; } catch(IllegalArgumentException e) { return false; }
