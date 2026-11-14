@@ -28,7 +28,7 @@ jobs:
         run: |
           dotnet tool install wix --version 5.0.2 --tool-path ./build/wix5
           if ($LASTEXITCODE -ne 0) { throw 'WiX setup failed' }
-      - name: Test and build self-contained installer
+      - name: Test and build Windows installer
         shell: pwsh
         run: ./build.ps1 -Test -Installer
       # release-notes.txt is also bundled in the app for offline viewing.

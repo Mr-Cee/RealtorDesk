@@ -9,7 +9,7 @@ final class DataLocationTest {
     interface Work{void run()throws Exception;}
     static void rejects(Work work)throws Exception{try{work.run();throw new AssertionError("Expected failure");}catch(IOException expected){checks++;}}
     static int run()throws Exception {
-        Path root=Files.createTempDirectory("RealtorDesk-location-test-");
+        Path root=Files.createTempDirectory("RealtorDesk-location-test-").toRealPath();
         try {
             Path old=Files.createDirectories(root.resolve("old")),target=root.resolve("new data"),settingsFile=old.resolve("settings.properties");
             var settings=new Properties();settings.setProperty("theme","ocean");settings.setProperty("repository","Mr-Cee/RealtorDesk");AppSettings.save(settingsFile,settings);
