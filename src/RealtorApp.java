@@ -61,7 +61,8 @@ public class RealtorApp {
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         var documents=new DocumentsPanel(db,dataHome.resolve("documents"));
         tabs.add("Documents",documents);
-        tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();});
+        var reports=new ReportsPanel(db);tabs.add("Reports",reports);
+        tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();if(tabs.getSelectedComponent()==reports)reports.refresh();});
         var root = new JPanel(new BorderLayout(10,10));
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());

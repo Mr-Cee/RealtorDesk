@@ -1,14 +1,15 @@
-RealtorDesk 0.1.24
+RealtorDesk 0.1.25
 
 What's new
 
-- Settings now includes a Data folder chooser for the database, documents and other saved artifacts.
-- Choose a separate empty folder and Save to copy and verify your data, update document links, and reload the app from the new location.
-- The app remembers this folder for every startup and future update. Program installation location remains separate.
-- Original files are retained as a fallback copy. Existing destination files are never overwritten.
-- If a saved data folder is unavailable, startup reports the location instead of creating a new empty database.
+- New Reports tab with average Start-to-Offer, Offer-to-Close and Start-to-Close times, plus average sold-home Closed Price.
+- Run Overall reports or group by property city and state. Each average shows its sample count.
+- All time is the default. Choose a month, quarter, year or custom inclusive date range using calendar choosers.
+- Date filtering uses Offer date for Start-to-Offer and Close date for the other metrics. Closing dates come from client Key Dates.
+- Timings count clients once overall, or once per city. Price averages count properties marked Sold or Closed with a recorded Closed Price.
+- Missing or reversed timing dates are excluded. Sold properties without a linked Close date are included only in All time. A dash indicates no qualifying data.
 
-Client records, property links, MLS numbers, Closed Price values and documents are preserved.
+Existing records, documents and your chosen data folder are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.
