@@ -1,15 +1,13 @@
-RealtorDesk 0.1.25
+RealtorDesk 0.1.26
 
 What's new
 
-- New Reports tab with average Start-to-Offer, Offer-to-Close and Start-to-Close times, plus average sold-home Closed Price.
-- Run Overall reports or group by property city and state. Each average shows its sample count.
-- All time is the default. Choose a month, quarter, year or custom inclusive date range using calendar choosers.
-- Date filtering uses Offer date for Start-to-Offer and Close date for the other metrics. Closing dates come from client Key Dates.
-- Timings count clients once overall, or once per city. Price averages count properties marked Sold or Closed with a recorded Closed Price.
-- Missing or reversed timing dates are excluded. Sold properties without a linked Close date are included only in All time. A dash indicates no qualifying data.
+- Click a date field directly to open its calendar. Separate Choose date buttons have been removed.
+- Applies to report date ranges, Date Last Communicated and client Key Dates.
+- Keyboard users can focus the date field and press Enter, Space or Alt+Down to open the calendar.
+- Clear remains available. Disabled report date fields stay inactive until Custom range is selected.
 
-Existing records, documents and your chosen data folder are preserved.
+Existing dates, records, documents and Closed Price values are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

@@ -16,10 +16,13 @@ final class DatePicker extends JPanel {
         super(new FlowLayout(FlowLayout.LEFT,4,0));
         this.title=title;
         value=initial==null||initial.isBlank()?null:LocalDate.parse(initial);
-        display.setEditable(false);display.setToolTipText("Choose "+title+". Leave blank if unknown.");
-        var choose=new JButton("Choose date...");choose.addActionListener(e->choose());
+        display.setEditable(false);display.setToolTipText("Click to choose "+title+", or press Enter or Space.");
+        display.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));display.getAccessibleContext().setAccessibleName(title+" (open calendar)");
+        display.addMouseListener(new java.awt.event.MouseAdapter(){public void mouseClicked(java.awt.event.MouseEvent e){if(display.isEnabled()&&SwingUtilities.isLeftMouseButton(e)&&e.getClickCount()==1)choose();}});
+        display.getActionMap().put("openCalendar",new AbstractAction(){public void actionPerformed(java.awt.event.ActionEvent e){if(display.isEnabled())choose();}});
+        for(String key:new String[]{"ENTER","SPACE","alt DOWN"})display.getInputMap().put(KeyStroke.getKeyStroke(key),"openCalendar");
         var clear=new JButton("Clear");clear.addActionListener(e->setDate(null));
-        add(display);add(choose);add(clear);setDate(value);
+        add(display);add(clear);setDate(value);
     }
     String date(){return value==null?"":value.toString();}
     void setDate(LocalDate date){value=date;display.setText(date());}
