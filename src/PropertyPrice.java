@@ -16,11 +16,14 @@ final class PropertyPrice {
     static String formatted(Long cents){return cents==null?"":NumberFormat.getCurrencyInstance(Locale.US).format(BigDecimal.valueOf(cents,2));}
     static void configureTable(JTable table) {
         ClientTableActions.hideId(table);
-        var status=new DefaultTableCellRenderer();status.setHorizontalAlignment(SwingConstants.CENTER);
-        table.getColumnModel().getColumn(table.convertColumnIndexToView(3)).setCellRenderer(status);
-        table.getColumnModel().getColumn(table.convertColumnIndexToView(4)).setCellRenderer(new DefaultTableCellRenderer(){
+        for(int i=0;i<table.getModel().getColumnCount();i++) {
+            String name=table.getModel().getColumnName(i);
+            if(name.equals("Status")){var status=new DefaultTableCellRenderer();status.setHorizontalAlignment(SwingConstants.CENTER);table.getColumnModel().getColumn(table.convertColumnIndexToView(i)).setCellRenderer(status);}
+            if(name.equals("Closed Price")||name.equals("Commission"))table.getColumnModel().getColumn(table.convertColumnIndexToView(i)).setCellRenderer(new DefaultTableCellRenderer(){
             {setHorizontalAlignment(SwingConstants.CENTER);}
             protected void setValue(Object value){setText(formatted(value==null?null:((Number)value).longValue()));}
         });
+        }
+        for(int i=0;i<table.getModel().getColumnCount();i++)if(table.getModel().getColumnName(i).equals("MLS #"))table.moveColumn(table.convertColumnIndexToView(i),2);
     }
 }

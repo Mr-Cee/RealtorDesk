@@ -37,6 +37,7 @@ public class ClientNameSearchTest {
         checks+=PropertyMlsTest.run();
         checks+=DataLocationTest.run();
         checks+=ReportTest.run();
+        checks+=CommissionTest.run();
         System.out.println("PASS: "+checks+" split-name migration and client-search checks");
     }
     static void searchChecks() {

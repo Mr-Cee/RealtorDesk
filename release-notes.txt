@@ -1,13 +1,13 @@
-RealtorDesk 0.1.26
+RealtorDesk 0.1.27
 
 What's new
 
-- Click a date field directly to open its calendar. Separate Choose date buttons have been removed.
-- Applies to report date ranges, Date Last Communicated and client Key Dates.
-- Keyboard users can focus the date field and press Enter, Space or Alt+Down to open the calendar.
-- Clear remains available. Disabled report date fields stay inactive until Custom range is selected.
+- MLS # now appears immediately to the right of Address in Properties.
+- Added Commission immediately to the right of Closed Price.
+- Enter an optional Commission dollar amount in the property editor, from either Properties or a client's linked-property section.
+- Commission displays as currency, sorts numerically, and is preserved when assigning or detaching clients. Existing commissions start blank.
 
-Existing dates, records, documents and Closed Price values are preserved.
+Existing prices, MLS numbers, client links and documents are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

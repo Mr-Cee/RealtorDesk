@@ -58,7 +58,7 @@ public class RealtorApp {
         frame.setJMenuBar(createMenuBar());
         var tabs = new JTabbedPane();
         tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
-        tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
+        tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #","Commission"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number,p.commission_cents FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         var documents=new DocumentsPanel(db,dataHome.resolve("documents"));
         tabs.add("Documents",documents);
         var reports=new ReportsPanel(db);tabs.add("Reports",reports);
@@ -121,7 +121,7 @@ public class RealtorApp {
     }
     JPanel records(String type, String[] columns, String sql, Runnable add) {
         var panel = new JPanel(new BorderLayout(8,8));
-        var model = new DefaultTableModel(columns,0) { public Class<?> getColumnClass(int c){return type.equals("properties")&&c==4?Long.class:Object.class;} public boolean isCellEditable(int r,int c) { return false; } };
+        var model = new DefaultTableModel(columns,0) { public Class<?> getColumnClass(int c){return type.equals("properties")&&(c==4||c==6)?Long.class:Object.class;} public boolean isCellEditable(int r,int c) { return false; } };
         var table = new JTable(model); table.setAutoCreateRowSorter(true); table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); table.setRowHeight(28);table.setFillsViewportHeight(true);
         Runnable refresh = () -> safe(() -> { model.setRowCount(0); try(var s=db.createStatement();var rs=s.executeQuery(sql)) { while(rs.next()) { Object[] row=new Object[columns.length]; for(int i=0;i<row.length;i++) row[i]=rs.getObject(i+1); model.addRow(row); } } });
         recordRefreshers.add(refresh);

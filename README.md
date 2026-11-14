@@ -1,6 +1,6 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.26).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.27).
 
 ## Run and package
 
@@ -34,7 +34,7 @@ The build prefers this project-local WiX installation. WiX 7 requires explicit a
 
 ## Current features
 
-Version 0.1.26 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
+Version 0.1.27 separates First name and Last name in the Clients table and add/edit dialog, with live client search and a Clear button. Search covers names, phone, email, client type, status and notes; it ignores case/accents, treats punctuation literally, and supports phone searches without formatting. Multiple words narrow the results across fields, and a count shows matching versus total clients. Search remains active through refresh and edits, and double-click editing still resolves the correct client under filtering/sorting.
 
 The transactional schema migration adds first_name and last_name, initially splitting the first word from the remaining name text. The existing full-name column is left unchanged during migration, and all IDs, types, notes and linked records remain intact. Multiword/compound names can be corrected in Edit; the existing full name is shown for comparison when applicable. Either name field can be blank, but at least one is required, allowing single names and business clients. Saving recomputes the combined display name used by Properties, Calls, Documents and client pickers. Repeat migrations preserve corrected split names.
 
@@ -106,3 +106,5 @@ Settings > Data folder > Browse selects a separate empty data directory. Save cr
 Reports provides average milestone durations and Closed Price with sample counts, overall or by city/state. Date ranges default to All time, with month/quarter/year and custom inclusive options. Each duration uses the interval's end date for filtering; prices use the linked client's Close date. Timing pairs missing dates or with an end before start are excluded individually. Clients count once overall and once in each linked city when grouped; properties count separately for price averages if status is Sold/Closed and price is recorded. Unassigned sold properties or those without Close dates participate in All time price averages only. Unknown cities appear as Unspecified city. City timing counts may overlap when a client has properties in multiple cities. Reports use client-level Key Dates, so multiple properties linked to a client share those milestone dates.
 
 Calendar fields open directly when clicked, including blank dates. Focus a date and press Enter, Space or Alt+Down for keyboard access. Separate Choose date buttons are removed; Clear remains. This applies to report ranges and client date fields. Disabled fields do not open the calendar.
+
+Properties columns are Client, Address, MLS #, Status, Closed Price and Commission. Commission is an optional dollar amount in the property editor, stored as integer cents, formatted as currency and sorted numerically. Blank is distinct from zero. Values persist through client assignment and detachment.
