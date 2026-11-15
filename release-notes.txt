@@ -1,20 +1,13 @@
-RealtorDesk 0.1.29
+RealtorDesk 0.1.30
 
 What's new
 
-Backups and restore
-- Open Settings > Backups / Restore to create a backup, restore one, or open the backup folder.
-- Full backups include a consistent database snapshot, documents and saved files, with checksum verification.
-- Automatic backups run every 10 minutes while the app is open when data has changed. Keep the latest five automatic copies; manual backups are not trimmed.
-- Restore verifies a backup and switches to a separate empty folder. Current data and a safety backup are retained. The app reloads and remembers the restored location.
+- Redesigned Add/Edit Task with compact rows and natural field heights.
+- Labels use a narrow column; fields and client/property buttons share the available width.
+- Notes keeps a comfortable multiline area without stretching every other row.
+- The default popup size fits the form to the screen without a horizontal scrollbar. Vertical scrolling is available only when needed on smaller screens.
 
-Tasks and reminders
-- New Tasks tab with due dates, priorities, notes, completion tracking, and optional client/property links.
-- Search tasks instantly; filter to due/overdue tasks or include completed tasks.
-- Optional in-app reminders show due and overdue tasks once per day while RealtorDesk is open, including on startup. The app must be open for reminders.
-- Tasks are included in backups and restore.
-
-Existing client links, MLS numbers, Closed Price values, commissions and documents are preserved.
+Existing tasks, reminders, client links, Closed Price values and backups are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.
