@@ -1,11 +1,11 @@
-RealtorDesk 0.1.30
+RealtorDesk 0.1.31
 
 What's new
 
-- Redesigned Add/Edit Task with compact rows and natural field heights.
-- Labels use a narrow column; fields and client/property buttons share the available width.
-- Notes keeps a comfortable multiline area without stretching every other row.
-- The default popup size fits the form to the screen without a horizontal scrollbar. Vertical scrolling is available only when needed on smaller screens.
+- Add/Edit Task now shows a read-only Phone row when the linked client has a phone number.
+- The row updates immediately when you add or remove a client. With no client or no saved phone number, the entire row is hidden.
+- The popup adjusts to the extra row while keeping the compact layout.
+- The main Tasks table is unchanged. Phone numbers are read from the client record rather than copied into tasks.
 
 Existing tasks, reminders, client links, Closed Price values and backups are preserved.
 

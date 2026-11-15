@@ -8,12 +8,15 @@ final class PropertyClientField extends JPanel {
     final JButton action=new JButton();
     final Connection db;
     private ClientPicker.Client selected;
+    private boolean showPhone=true;
     PropertyClientField(Connection db,Long existing)throws SQLException {
         super(new BorderLayout(6,0));this.db=db;display.setEditable(false);add(display);add(action,BorderLayout.EAST);
         if(existing!=null){selected=ClientPicker.clients(db).stream().filter(c->c.id()==existing).findFirst().orElseThrow(()->new SQLException("The linked client no longer exists. Refresh the property list."));}
         update();action.addActionListener(e->{if(selected!=null){assign(null);return;}try{var chosen=ClientPicker.show(this,db);if(chosen!=null)assign(chosen);}catch(SQLException problem){JOptionPane.showMessageDialog(this,problem.getMessage(),"Clients",JOptionPane.ERROR_MESSAGE);}});
     }
     Long clientId(){return selected==null?null:selected.id();}
-    void assign(ClientPicker.Client client){selected=client;update();}
-    private void update(){display.setText(selected==null?"":selected.name()+(selected.phone().isBlank()?"":" | "+selected.phone()));display.setCaretPosition(0);action.setText(selected==null?"Add":"Remove");display.setToolTipText(selected==null?"No linked client":selected.name()+" | "+selected.phone()+" | "+selected.email());}
+    String phone(){return selected==null?"":selected.phone();}
+    void showPhoneInDisplay(boolean show){showPhone=show;update();}
+    void assign(ClientPicker.Client client){Long previous=clientId();selected=client;update();firePropertyChange("linkedClient",previous,clientId());}
+    private void update(){display.setText(selected==null?"":selected.name()+(!showPhone||selected.phone().isBlank()?"":" | "+selected.phone()));display.setCaretPosition(0);action.setText(selected==null?"Add":"Remove");display.setToolTipText(selected==null?"No linked client":selected.name()+" | "+selected.phone()+" | "+selected.email());}
 }
