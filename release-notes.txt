@@ -1,13 +1,20 @@
-RealtorDesk 0.1.28
+RealtorDesk 0.1.29
 
 What's new
 
-- Client Status is now a dropdown: Lead, Looking for Home, Selling Home, Offered, Closed. New clients default to Lead.
-- Property Status is now a dropdown: Listed, Offered, Closed. New properties default to Listed.
-- Clients and Properties each have an Include closed checkbox, checked by default. Uncheck it to hide Closed records from both the list and live search.
-- Common legacy statuses are converted: Sold to Closed; Pending, Under offer and Under contract to Offered. Active buyer/seller clients become Looking for Home/Selling Home. Other values use Lead/Listed; original converted values are retained in the database for reference.
+Backups and restore
+- Open Settings > Backups / Restore to create a backup, restore one, or open the backup folder.
+- Full backups include a consistent database snapshot, documents and saved files, with checksum verification.
+- Automatic backups run every 10 minutes while the app is open when data has changed. Keep the latest five automatic copies; manual backups are not trimmed.
+- Restore verifies a backup and switches to a separate empty folder. Current data and a safety backup are retained. The app reloads and remembers the restored location.
 
-Existing client links, addresses, MLS numbers, Closed Price values, commissions and documents are preserved.
+Tasks and reminders
+- New Tasks tab with due dates, priorities, notes, completion tracking, and optional client/property links.
+- Search tasks instantly; filter to due/overdue tasks or include completed tasks.
+- Optional in-app reminders show due and overdue tasks once per day while RealtorDesk is open, including on startup. The app must be open for reminders.
+- Tasks are included in backups and restore.
+
+Existing client links, MLS numbers, Closed Price values, commissions and documents are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

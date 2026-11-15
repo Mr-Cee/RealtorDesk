@@ -39,6 +39,8 @@ public class ClientNameSearchTest {
         checks+=ReportTest.run();
         checks+=CommissionTest.run();
         checks+=StatusTest.run();
+        checks+=BackupTest.run();
+        checks+=TaskTest.run();
         System.out.println("PASS: "+checks+" split-name migration and client-search checks");
     }
     static void searchChecks() {

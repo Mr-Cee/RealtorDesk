@@ -16,6 +16,7 @@ public class RealtorApp {
     final Properties settings = new Properties();
     Connection db;
     Path dataHome;
+    BackupController backups;
     final java.util.List<Runnable> recordRefreshers=new ArrayList<>();
     void refreshRecords(){for(var refresh:recordRefreshers)refresh.run();}
     final JMenuItem updateMenuItem = new JMenuItem("Check for updates");
@@ -50,7 +51,7 @@ public class RealtorApp {
             s.execute("CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),called TEXT,followup TEXT,notes TEXT)");
             s.execute("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
         }
-        ClientStore.migrate(db);PropertyStore.migrate(db);Statuses.migrate(db);
+        ClientStore.migrate(db);PropertyStore.migrate(db);Statuses.migrate(db);TaskStore.migrate(db);
         var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
         var icons=new ArrayList<Image>();
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
@@ -61,16 +62,19 @@ public class RealtorApp {
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #","Commission"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number,p.commission_cents FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         var documents=new DocumentsPanel(db,dataHome.resolve("documents"));
         tabs.add("Documents",documents);
+        var tasks=new TasksPanel(db);tabs.add("Tasks",tasks);
         var reports=new ReportsPanel(db);tabs.add("Reports",reports);
-        tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();if(tabs.getSelectedComponent()==reports)reports.refresh();});
+        tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();if(tabs.getSelectedComponent()==reports)reports.refresh();if(tabs.getSelectedComponent()==tasks)tasks.refresh();});
         var root = new JPanel(new BorderLayout(10,10));
         root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
         var top = new JPanel(new BorderLayout());
         top.add(new JLabel("RealtorDesk — Clients, homes and conversations"), BorderLayout.WEST);
         root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + dataHome), BorderLayout.SOUTH);
         frame.setContentPane(root); frame.setSize(1150,700); frame.setLocationRelativeTo(null); frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); frame.setVisible(true);
+        backups=new BackupController(frame,db,dataHome,HOME.resolve("settings.properties"),settings);backups.start();
         SwingUtilities.invokeLater(() -> {
             if (ReleaseNotes.shouldShow(settings, VERSION)) showReleaseNotes();
+            tasks.start(frame);
             if (!settings.getProperty("repository", "").isBlank()) checkUpdates(false);
         });
     }
@@ -230,8 +234,9 @@ public class RealtorApp {
         boolean saved=false;
         try {
             while(true) {
-                Object[] choices={"Save","Cancel"};
+                Object[] choices={"Save","Backups / Restore","Cancel"};
                 int result=JOptionPane.showOptionDialog(frame,form,"Settings",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE,null,choices,choices[0]);
+                if(result==1){previous.apply();if(backups.manage()){saved=true;reloadApp();return;}((AppTheme)theme.getSelectedItem()).apply();continue;}
                 if(result!=0)return;
                 String repo=repository.getText().trim();
                 if(!repo.isEmpty()&&!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")) {
@@ -241,7 +246,7 @@ public class RealtorApp {
                 updated.setProperty("theme",((AppTheme)theme.getSelectedItem()).id);
                 Path requested=Path.of(dataFolder.getText()).toAbsolutePath().normalize();
                 if(!requested.equals(dataHome.toAbsolutePath().normalize())) {
-                    relocateData(requested,updated);saved=true;db.close();frame.dispose();new RealtorApp().start();return;
+                    relocateData(requested,updated);saved=true;reloadApp();return;
                 }
                 AppSettings.save(HOME.resolve("settings.properties"),updated);
                 settings.clear();settings.putAll(updated);saved=true;return;
@@ -249,6 +254,7 @@ public class RealtorApp {
         } catch(Exception e){JOptionPane.showMessageDialog(frame,e.getMessage(),"Settings could not be saved",JOptionPane.ERROR_MESSAGE);}
         finally {if(!saved)previous.apply();}
     }
+    void reloadApp()throws Exception {if(backups!=null)backups.stop();db.close();frame.dispose();new RealtorApp().start();}
     void relocateData(Path target,Properties updated)throws Exception {
         var progress=new JDialog(frame,"Moving RealtorDesk data",true);progress.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         var panel=new JPanel(new BorderLayout(10,10));panel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
