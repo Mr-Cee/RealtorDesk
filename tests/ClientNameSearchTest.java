@@ -42,6 +42,7 @@ public class ClientNameSearchTest {
         checks+=BackupTest.run();
         checks+=TaskTest.run();
         checks+=TaskPhoneTest.run();
+        checks+=ChecklistTest.run();
         System.out.println("PASS: "+checks+" split-name migration and client-search checks");
     }
     static void searchChecks() {

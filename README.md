@@ -1,6 +1,10 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.31).
+Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.32).
+
+## Property checklists
+
+Select a saved property in Properties and click Checklist. Use the included Buyer or Seller template, or add custom steps. Templates can be created, edited and deleted from Templates; changes affect future checklists only. Each property has one checklist with a completed/total progress display. Steps support a title, optional calendar due date, notes, completion and reminders. Each step also appears in Tasks, where edits and completion stay synchronized. Due steps use the existing daily reminders while the app is open. Template steps start without due dates. Deleting a step or its task removes it from both views. Deleting a property removes its checklist but preserves its tasks as unlinked tasks. Checklists and templates are included in database backups and data-folder moves.
 
 ## Run and package
 

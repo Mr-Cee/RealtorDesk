@@ -1,13 +1,14 @@
-RealtorDesk 0.1.31
+RealtorDesk 0.1.32
 
 What's new
 
-- Add/Edit Task now shows a read-only Phone row when the linked client has a phone number.
-- The row updates immediately when you add or remove a client. With no client or no saved phone number, the entire row is hidden.
-- The popup adjusts to the extra row while keeping the compact layout.
-- The main Tasks table is unchanged. Phone numbers are read from the client record rather than copied into tasks.
+- Select a property and click Checklist to track transaction steps and completed/total progress.
+- Start with Buyer or Seller templates, or create your own. Template changes affect future checklists only.
+- Add, edit, complete, reopen or delete steps, with optional calendar due dates and notes.
+- Steps also appear in Tasks. Completion, edits and due dates stay synchronized, and due steps use existing reminders while the app is open.
+- Template steps start without due dates. Add dates to receive reminders.
 
-Existing tasks, reminders, client links, Closed Price values and backups are preserved.
+Existing tasks, reminders, client links, Closed Price values and backups are preserved. Checklists are included in database backups.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

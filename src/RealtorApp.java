@@ -51,7 +51,7 @@ public class RealtorApp {
             s.execute("CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),called TEXT,followup TEXT,notes TEXT)");
             s.execute("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY,client_id INTEGER NOT NULL REFERENCES clients(id),name TEXT,path TEXT,added TEXT)");
         }
-        ClientStore.migrate(db);PropertyStore.migrate(db);Statuses.migrate(db);TaskStore.migrate(db);
+        ClientStore.migrate(db);PropertyStore.migrate(db);Statuses.migrate(db);TaskStore.migrate(db);ChecklistStore.migrate(db);
         var icon=javax.imageio.ImageIO.read(RealtorApp.class.getResource("/app-icon.png"));
         var icons=new ArrayList<Image>();
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
@@ -153,6 +153,7 @@ public class RealtorApp {
             Runnable editSelected=ClientTableActions.install(table,this::editProperty,this::refreshRecords);
             var edit=new JButton("Edit selected");edit.addActionListener(e->editSelected.run());buttons.add(edit);
             table.setToolTipText("Double-click to edit a property or change its client.");
+            var checklist=new JButton("Checklist");checklist.addActionListener(e->safe(()->{int row=table.getSelectedRow();if(row<0){JOptionPane.showMessageDialog(frame,"Select a property first.");return;}long id=((Number)model.getValueAt(table.convertRowIndexToModel(row),0)).longValue();JOptionPane.showMessageDialog(frame,new ChecklistPanel(db,id),"Checklist — "+PropertyStore.load(db,id).address(),JOptionPane.PLAIN_MESSAGE);}));buttons.add(checklist);
             var delete=new JButton("Delete property");delete.addActionListener(e->safe(()->{
                 int row=table.getSelectedRow();if(row<0)return;
                 long id=((Number)model.getValueAt(table.convertRowIndexToModel(row),0)).longValue();
