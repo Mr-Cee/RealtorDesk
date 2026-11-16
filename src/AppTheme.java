@@ -4,12 +4,12 @@ import javax.swing.plaf.*;
 import javax.swing.plaf.metal.*;
 
 enum AppTheme {
-    CLASSIC("classic","Classic Light",0xF2F5F9,0xE5EBF2,0xFFFFFF,0x1F3044,0x607089,0x245C94,0x245C94,0xFFFFFF,0xB7C4D3),
+    CLASSIC("classic","Classic Light",0xF4F6FA,0xFFFFFF,0xFFFFFF,0x1E293B,0x64748B,0x2563EB,0x2563EB,0xFFFFFF,0xDCE3ED),
     MIDNIGHT("midnight","Midnight (dark)",0x141B27,0x202D40,0x101722,0xE8EEF7,0xA8B5C7,0x6F9DD4,0x6F9DD4,0x0D1726,0x43556F),
-    OCEAN("ocean","Ocean",0xEAF5FB,0xD7EAF4,0xF9FDFF,0x173B50,0x4B6C80,0x12617F,0x12617F,0xFFFFFF,0x9ABECE),
+    OCEAN("ocean","Ocean",0xF2F7FA,0xFFFFFF,0xFFFFFF,0x173B50,0x4B6C80,0x12617F,0x12617F,0xFFFFFF,0xD8E6ED),
     FOREST("forest","Forest (dark)",0x172922,0x243B30,0x102019,0xE6F1E9,0xA6BDB0,0x8DBE9F,0x8DBE9F,0x102318,0x4D6B59),
     PLUM("plum","Plum (dark)",0x2B2034,0x3D2E48,0x211827,0xF1E8F6,0xBFAFCB,0xB99AD0,0xB99AD0,0x24152F,0x705A80),
-    SANDSTONE("sandstone","Sandstone",0xF6F0E4,0xE9DECB,0xFFFCF6,0x423421,0x75654F,0x896434,0x896434,0xFFFFFF,0xC4AE8C),
+    SANDSTONE("sandstone","Sandstone",0xF8F6F1,0xFFFDFA,0xFFFFFF,0x423421,0x75654F,0x896434,0x896434,0xFFFFFF,0xE4DDD1),
     SLATE("slate","Slate (dark)",0x242A31,0x343D47,0x1B2127,0xE7ECF1,0xAAB4C0,0x8DADCC,0x8DADCC,0x141D28,0x596877);
 
     final String id,label;
@@ -80,7 +80,8 @@ enum AppTheme {
         UIManager.put("TabbedPane.tabInsets",new InsetsUIResource(7,12,7,12));
         UIManager.put("Button.margin",new InsetsUIResource(5,12,5,12));
         for(String key:new String[]{"Button.gradient","ToggleButton.gradient","CheckBox.gradient","MenuBar.gradient","TableHeader.gradient","ScrollBar.gradient"})UIManager.put(key,null);
-        for(Window window:Window.getWindows()) {SwingUtilities.updateComponentTreeUI(window);window.invalidate();window.validate();window.repaint();}
+        ModernUI.install(this);
+        for(Window window:Window.getWindows()) {SwingUtilities.updateComponentTreeUI(window);ModernUI.polish(window);window.invalidate();window.validate();window.repaint();}
     }
     private static void put(Color color,String... keys){for(String key:keys)UIManager.put(key,color(color));}
 }

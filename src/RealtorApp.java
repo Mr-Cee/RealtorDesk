@@ -57,7 +57,7 @@ public class RealtorApp {
         for(int size:new int[]{16,32,48,64,128,256})icons.add(icon.getScaledInstance(size,size,Image.SCALE_SMOOTH));
         frame.setIconImages(icons);
         frame.setJMenuBar(createMenuBar());
-        var tabs = new JTabbedPane();
+        var tabs = AppShell.tabs();
         tabs.add("Clients", records("clients", new String[]{"ID","First name","Last name","Phone","Email","Client type","Properties","Date Last Communicated","Status","Notes"}, "SELECT c.id,c.first_name,c.last_name,c.phone,c.email,c.client_type,(SELECT GROUP_CONCAT(p.address, '; ') FROM properties p WHERE p.client_id=c.id),c.last_communicated,c.status,c.notes FROM clients c", () -> editClient(null)));
         tabs.add("Properties", records("properties", new String[]{"ID","Client","Address","Status","Closed Price","MLS #","Commission"}, "SELECT p.id,c.name,p.address,p.status,p.closed_price_cents,p.mls_number,p.commission_cents FROM properties p LEFT JOIN clients c ON c.id=p.client_id", this::addProperty));
         var documents=new DocumentsPanel(db,dataHome.resolve("documents"));
@@ -65,12 +65,9 @@ public class RealtorApp {
         var tasks=new TasksPanel(db);tabs.add("Tasks",tasks);
         var reports=new ReportsPanel(db);tabs.add("Reports",reports);
         tabs.addChangeListener(e->{refreshRecords();if(tabs.getSelectedComponent()==documents)documents.refreshVisible();if(tabs.getSelectedComponent()==reports)reports.refresh();if(tabs.getSelectedComponent()==tasks)tasks.refresh();});
-        var root = new JPanel(new BorderLayout(10,10));
-        root.setBorder(BorderFactory.createEmptyBorder(14,14,14,14));
-        var top = new JPanel(new BorderLayout());
-        top.add(new JLabel("RealtorDesk — Clients, homes and conversations"), BorderLayout.WEST);
-        root.add(top, BorderLayout.NORTH); root.add(tabs); root.add(new JLabel("Data: " + dataHome), BorderLayout.SOUTH);
-        frame.setContentPane(root); frame.setSize(1150,700); frame.setLocationRelativeTo(null); frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); frame.setVisible(true);
+        var root = new AppShell(tabs,VERSION,dataHome.toString());
+        var screen=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        frame.setContentPane(root);frame.setMinimumSize(new Dimension(Math.min(1080,screen.width),Math.min(680,screen.height)));frame.setSize(Math.min(1360,screen.width),Math.min(820,screen.height));frame.setLocationRelativeTo(null);frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);frame.setVisible(true);
         backups=new BackupController(frame,db,dataHome,HOME.resolve("settings.properties"),settings);backups.start();
         SwingUtilities.invokeLater(() -> {
             if (ReleaseNotes.shouldShow(settings, VERSION)) showReleaseNotes();

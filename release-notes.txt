@@ -1,14 +1,14 @@
-RealtorDesk 0.1.32
+RealtorDesk 0.2.0
 
 What's new
 
-- Select a property and click Checklist to track transaction steps and completed/total progress.
-- Start with Buyer or Seller templates, or create your own. Template changes affect future checklists only.
-- Add, edit, complete, reopen or delete steps, with optional calendar due dates and notes.
-- Steps also appear in Tasks. Completion, edits and due dates stay synchronized, and due steps use existing reminders while the app is open.
-- Template steps start without due dates. Add dates to receive reminders.
+- A redesigned workspace with sidebar navigation and clear section headings. Use Ctrl+1 through Ctrl+5 to switch sections.
+- Rounded buttons and fields, cleaner table headers, spacious rows, status badges and subtle scrollbars.
+- Refreshed light palettes, with all seven themes and your saved theme selection preserved.
+- Toolbars wrap on narrower windows, and the main window initially fits your screen.
+- Settings and Help remain at the top left, including updates, What's New and About.
 
-Existing tasks, reminders, client links, Closed Price values and backups are preserved. Checklists are included in database backups.
+Existing clients, documents, Closed Price values, checklists, tasks, reminders, backups and data locations are preserved.
 
 Updates: Help > Check for updates.
 View these notes anytime: Help > What's New.

@@ -1,6 +1,10 @@
 # RealtorDesk
 
-Initial Windows desktop prototype for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.1.32).
+Windows desktop workspace for an individual realtor. Java 21+, Swing, SQLite. The VERSION file is the source of truth (currently 0.2.0).
+
+## Modern workspace
+
+Version 0.2.0 introduces sidebar navigation (Ctrl+1 through Ctrl+5), clear section headings, rounded controls, modern table styling and status badges, compact scrollbars, and toolbars that wrap when space is limited. All seven saved themes remain available, with refreshed light palettes and live switching. Settings and Help remain at the top left. The window initially fits the available screen. Existing records, database locations, backups, reminders and updates continue to work with the new interface. Styling is bundled with the application and requires no additional installation or internet connection.
 
 ## Property checklists
 
